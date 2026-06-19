@@ -5399,9 +5399,9 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const [showNewProject, setShowNewProject] = useState(false);
   const [showNewContact, setShowNewContact] = useState(false);
   var headerClickRef = useRef({count:0,timer:null});
-  const mgmtAccess = (effectiveRole === "Owner" || effectiveRole === "Admin");
   const [viewAsRole, setViewAsRole] = useState(null);
   const effectiveRole = viewAsRole || authUser.role;
+  const mgmtAccess = (effectiveRole === "Owner" || effectiveRole === "Admin");
   const isProduction = effectiveRole === "Production";
 
   useEffect(function() {
