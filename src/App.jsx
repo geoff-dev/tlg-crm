@@ -5508,14 +5508,6 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const mgmtAccess = (effectiveRole === "Owner" || effectiveRole === "Admin");
   const isProduction = effectiveRole === "Production";
 
-  useEffect(function() {
-    if (isProduction) {
-      sbGet("ops_project_schedule", "select=project_id&limit=500").then(function(r) {
-        var ids = {}; (r||[]).forEach(function(s){if(s.project_id)ids[s.project_id]=true;});
-        setSchedulerProjectIds(ids);
-      });
-    }
-  }, [isProduction]);
   const [schedulerProjectIds, setSchedulerProjectIds] = useState(null);
   const [projects, setProjects] = useState([]);
   const [projectContacts, setProjectContacts] = useState({});
@@ -5672,7 +5664,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480,padding:"0 4px"}}>
         {[
-          {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
+          {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"pipeline",label:"Kanban",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
           {id:"dashboard",label:"Sales Funnel",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"stale",label:"Stale alerts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;},roles:["Owner","Admin","Sales"]},
@@ -5681,7 +5673,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
           {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/",roles:["Owner","Admin","Sales","Production"]}
-        ].filter(function(item){return !item.roles||item.roles.indexOf(effectiveRole)>=0;}).map(function(item) {
+        ].filter(function(item){return !item.roles||item.roles.indexOf(effectiveRole)>=0;}).sort(function(a,b){if(effectiveRole==="Production"){if(a.id==="_production")return -1;if(b.id==="_production")return 1;}return 0;}).map(function(item) {
           var isExternal = item.external;
           return <div key={item.id} onClick={function(){
             if (isExternal) { window.open(item.external, "_blank"); }
