@@ -5399,8 +5399,10 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const [showNewProject, setShowNewProject] = useState(false);
   const [showNewContact, setShowNewContact] = useState(false);
   var headerClickRef = useRef({count:0,timer:null});
-  const mgmtAccess = authUser.role === "Owner" || authUser.role === "Admin";
-  const isProduction = authUser.role === "Production";
+  const mgmtAccess = (effectiveRole === "Owner" || effectiveRole === "Admin");
+  const [viewAsRole, setViewAsRole] = useState(null);
+  const effectiveRole = viewAsRole || authUser.role;
+  const isProduction = effectiveRole === "Production";
 
   useEffect(function() {
     if (isProduction) {
@@ -5543,6 +5545,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <span style={{fontSize:12,color:"#8a8780",fontWeight:500}}>{authUser.name}</span>
+        {authUser.role==="Owner"&&<select value={viewAsRole||""} onChange={function(e){setViewAsRole(e.target.value||null);setProjectView("home");}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #d0cec7",fontSize:11,color:"#6b6960",cursor:"pointer",background:"#fff"}}><option value="">My view</option><option value="Admin">View as Admin</option><option value="Sales">View as Sales</option><option value="Production">View as Production</option></select>}
         <button onClick={onLogout} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #d0cec7",background:"#fff",cursor:"pointer",fontSize:12,color:"#8a8780",fontWeight:500}}>Log out</button>
       </div>
     </div>
@@ -5554,6 +5557,10 @@ function AuthenticatedApp({ authUser, onLogout }) {
     {showNewProject&&<NewProjectModal onClose={()=>setShowNewProject(false)} onCreated={p=>{setShowNewProject(false);cacheClear();openProject(p);}}/>}
     {showNewContact&&<NewContactModal onClose={()=>setShowNewContact(false)} onCreated={c=>{setShowNewContact(false);cacheClear();openContact(c);}}/>}
 
+    {viewAsRole&&<div style={{background:"#FAEEDA",borderRadius:8,padding:"8px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:12,color:"#633806",fontWeight:600}}>Previewing as: {viewAsRole}</span>
+        <button onClick={function(){setViewAsRole(null);setProjectView("home");}} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #d0cec7",background:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",color:"#633806"}}>Exit preview</button>
+      </div>}
     {projectView==="home"&&<div>
       <div style={{display:"flex",gap:8,marginBottom:20,padding:"0 4px"}}>
         {!isProduction&&<button onClick={function(){setShowNewProject(true);}} style={{...btnP,fontSize:13,padding:"8px 18px"}}>+ New project</button>}
