@@ -3801,6 +3801,79 @@ function StaleAlerts({ onOpenProject }) {
   </div>);
 }
 
+/* ── Standalone Forecast View ── */
+function ForecastView() {
+  var [data, setData] = useState(null);
+  var [loading, setLoading] = useState(true);
+  var curYear = new Date().getFullYear();
+
+  useEffect(function() {
+    Promise.all([
+      sbGet("projects", "select=id,stage,estimate_amount,sale_amount,forecast_amount,forecast_date,date_sold,lead_date&stage=neq.Lost&limit=50000"),
+    ]).then(function(results) {
+      var all = results[0] || [];
+      var sold = all.filter(function(p){return p.stage==="Sold"&&p.date_sold&&p.date_sold.slice(0,4)===String(curYear);});
+      var active = all.filter(function(p){return p.stage!=="Sold"&&p.stage!=="Lost";});
+
+      var pipelineByStage = {};
+      STAGES.forEach(function(s){if(s!=="Sold"&&s!=="Lost") pipelineByStage[s]={count:0,estTotal:0,fcstTotal:0};});
+      active.forEach(function(p) {
+        var s = p.stage;
+        if (pipelineByStage[s]) {
+          pipelineByStage[s].count++;
+          var est = parseFloat(p.estimate_amount)||0;
+          var fcst = parseFloat(p.forecast_amount)||est;
+          pipelineByStage[s].estTotal += est;
+          pipelineByStage[s].fcstTotal += fcst;
+        }
+      });
+
+      var totalPipeEst=0, totalFcst=0;
+      Object.values(pipelineByStage).forEach(function(s){totalPipeEst+=s.estTotal;totalFcst+=s.fcstTotal;});
+      var totalRevSold = sold.reduce(function(s,p){return s+(parseFloat(p.sale_amount)||0);},0);
+
+      setData({pipelineByStage:pipelineByStage,active:active,sold:sold,totalPipeEst:totalPipeEst,totalFcst:totalFcst,totalRevSold:totalRevSold});
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div style={{padding:40,textAlign:"center",color:"#8a8780"}}>Loading forecast...</div>;
+  if (!data) return null;
+
+  return (<div>
+    <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
+      <div style={{background:"#EAF3DE",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#173404",textTransform:"uppercase",letterSpacing:"0.06em"}}>Closed YTD</div><div style={{fontSize:22,fontWeight:500,color:"#173404"}}>{fmtC(data.totalRevSold)}</div></div>
+      <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Pipeline (est.)</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(data.totalPipeEst)}</div></div>
+      <div style={{background:"#E6F1FB",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#0C447C",textTransform:"uppercase",letterSpacing:"0.06em"}}>Total forecast</div><div style={{fontSize:22,fontWeight:500,color:"#0C447C"}}>{fmtC(data.totalFcst)}</div></div>
+      <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Projected total</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(data.totalRevSold + data.totalFcst)}</div></div>
+    </div>
+    <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <thead><tr style={{borderBottom:"2px solid #e8e6df"}}>
+          <th style={thL}>Stage</th><th style={thS}>Projects</th><th style={thS}>Est. $</th><th style={thS}>Forecast $</th>
+        </tr></thead>
+        <tbody>{STAGES.filter(function(s){return s!=="Sold"&&s!=="Lost";}).map(function(s,i) {
+          var d = data.pipelineByStage[s] || {count:0,estTotal:0,fcstTotal:0};
+          return <tr key={s} style={{borderBottom:"0.5px solid #f0eeea",background:i%2===0?"transparent":"#f7f6f330"}}>
+            <td style={Object.assign({},tdL,{fontWeight:500})}><Badge stage={s}/></td>
+            <td style={tdS}>{d.count}</td>
+            <td style={tdS}>{fmtC(d.estTotal)}</td>
+            <td style={Object.assign({},tdS,{color:d.fcstTotal!==d.estTotal?"#185FA5":"inherit"})}>{fmtC(d.fcstTotal)}</td>
+          </tr>;
+        })}</tbody>
+        <tfoot><tr style={{borderTop:"2px solid #e8e6df",fontWeight:600}}>
+          <td style={tdL}>Total</td>
+          <td style={tdS}>{data.active.length}</td>
+          <td style={tdS}>{fmtC(data.totalPipeEst)}</td>
+          <td style={Object.assign({},tdS,{color:"#185FA5"})}>{fmtC(data.totalFcst)}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div style={{marginTop:12,fontSize:12,color:"#8a8780"}}>Forecast $ uses your manually entered forecast amount when available, falls back to estimate amount.</div>
+  </div>);
+}
+
+
 /* ── Order Dashboard (cross-project view) ── */
 function OrderDashboard({ onOpenProject }) {
   var [items, setItems] = useState([]);
@@ -5583,7 +5656,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
           return <div key={item.id} onClick={function(){
             if (isExternal) { window.open(item.external, "_blank"); }
             else if (item.id === "contacts") { setSection("contacts"); setProjectView("contactsview"); }
-            else if (item.id === "pipeforecast") { setSection("projects"); setProjectView("mgmtconsole"); setTimeout(function(){var evt=new CustomEvent("mc-section",{detail:"pipeline"});window.dispatchEvent(evt);},100); } else { setSection("projects"); setProjectView(item.id); }
+            else { setSection("projects"); setProjectView(item.id); }
           }} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s",position:"relative"}}
           onMouseEnter={function(e){e.currentTarget.style.borderColor="#185FA5";e.currentTarget.style.boxShadow="0 2px 8px rgba(36,63,129,0.1)";}}
           onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";e.currentTarget.style.boxShadow="none";}}>
@@ -5607,6 +5680,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
       {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
       {projectView==="ordertrack"&&<OrderDashboard onOpenProject={openProject}/>}
       {projectView==="sops"&&<SOPViewer/>}
+      {projectView==="pipeforecast"&&<ForecastView/>}
       {projectView==="lifedeath"&&<LifeAndDeath onOpenProject={openProject}/>}
       {projectView==="mgmtconsole"&&mgmtAccess&&<ManagementConsole onOpenProject={openProject}/>}
       {projectView==="hiddenconsole"&&mgmtAccess&&<HiddenConsole authUser={authUser}/>}
