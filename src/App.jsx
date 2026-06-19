@@ -3794,6 +3794,39 @@ function StaleAlerts({ onOpenProject }) {
   </div>);
 }
 
+/* ── Production Project List ── */
+function ProductionProjectList({ schedulerIds, onOpenProject }) {
+  var [projects, setProjects] = useState([]);
+  var [loading, setLoading] = useState(true);
+
+  useEffect(function() {
+    var ids = Object.keys(schedulerIds);
+    if (ids.length === 0) { setLoading(false); return; }
+    var batches = [];
+    for (var i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
+    Promise.all(batches.map(function(b) {
+      return sbGet("projects", "select=id,job_name,project_type,job_location,contact_id,stage&id=in.(" + b.join(",") + ")&limit=200");
+    })).then(function(results) {
+      var all = [];
+      results.forEach(function(r) { (r || []).forEach(function(p) { all.push(p); }); });
+      setProjects(all);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div style={{padding:20,color:"#8a8780"}}>Loading projects...</div>;
+  if (projects.length === 0) return <div style={{padding:20,color:"#8a8780",fontSize:13}}>No projects currently in the production schedule.</div>;
+
+  return <div>
+    {projects.map(function(p) {
+      return <div key={p.id} onClick={function(){onOpenProject(p);}} style={{background:"#fff",border:"0.5px solid #e8e6df",borderRadius:10,padding:"12px 16px",marginBottom:6,cursor:"pointer"}} onMouseEnter={function(e){e.currentTarget.style.borderColor="#185FA5";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";}}>
+        <div style={{fontSize:14,fontWeight:600}}>{p.job_name||"Project"}</div>
+        <div style={{fontSize:12,color:"#8a8780",marginTop:2}}>{p.project_type||""}{p.job_location?" · "+p.job_location:""}</div>
+      </div>;
+    })}
+  </div>;
+}
+
 /* ── Standalone Forecast View ── */
 function ForecastView() {
   var [data, setData] = useState(null);
@@ -5683,13 +5716,8 @@ function AuthenticatedApp({ authUser, onLogout }) {
       {projectView==="list"&&isProduction&&<div>
         <div style={{fontSize:14,fontWeight:600,color:"#243F81",marginBottom:12}}>Active production projects</div>
         {schedulerProjectIds===null&&<div style={{padding:20,color:"#8a8780"}}>Loading...</div>}
-        {schedulerProjectIds&&projects.filter(function(p){return schedulerProjectIds[p.id];}).length===0&&<div style={{padding:20,color:"#8a8780",fontSize:13}}>No projects currently in the production schedule.</div>}
-        {schedulerProjectIds&&projects.filter(function(p){return schedulerProjectIds[p.id];}).map(function(p){
-          return <div key={p.id} onClick={function(){openProject(p);}} style={{background:"#fff",border:"0.5px solid #e8e6df",borderRadius:10,padding:"12px 16px",marginBottom:6,cursor:"pointer"}} onMouseEnter={function(e){e.currentTarget.style.borderColor="#185FA5";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";}}>
-            <div style={{fontSize:14,fontWeight:600}}>{p.job_name||"Project"}</div>
-            <div style={{fontSize:12,color:"#8a8780",marginTop:2}}>{p.project_type||""}{p.job_location?" · "+p.job_location:""}</div>
-          </div>;
-        })}
+        {schedulerProjectIds&&Object.keys(schedulerProjectIds).length===0&&<div style={{padding:20,color:"#8a8780",fontSize:13}}>No projects currently in the production schedule.</div>}
+        {schedulerProjectIds&&Object.keys(schedulerProjectIds).length>0&&<ProductionProjectList schedulerIds={schedulerProjectIds} onOpenProject={openProject}/>}
       </div>}
       {projectView==="list"&&!isProduction&&<div>
         <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
