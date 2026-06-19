@@ -2266,15 +2266,15 @@ function ManagementConsole({ onOpenProject }) {
         {id:"thermometers",label:"Goal Tracker",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>;}},
         {id:"scorecard",label:"Scorecard",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>;}},
         {id:"history",label:"Sales History",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;}},
-        {id:"pipeline",label:"Pipeline Forecast",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
         {id:"variance",label:"Estimate vs Sale",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;}},
         {id:"lost",label:"Lost Deal Analysis",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;}},
         {id:"reports",label:"Reports",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>;}},
         {id:"goals",label:"Goals",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;}},
         {id:"performance",label:"Performance",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>;}},
-        {id:"sops",label:"SOPs",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>;}}
+        {id:"changeorders",label:"Change Orders",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>;}},
+        {id:"_estimator",label:"Estimator",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/><circle cx="16" cy="16" r="2"/></svg>;}},
       ].map(function(item) {
-        return <div key={item.id} onClick={function(){setSection(item.id);}} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s"}}
+        return <div key={item.id} onClick={function(){if(item.external){window.open(item.external,"_blank");}else{setSection(item.id);}}} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s"}}
         onMouseEnter={function(e){e.currentTarget.style.borderColor="#243F81";e.currentTarget.style.boxShadow="0 2px 8px rgba(36,63,129,0.1)";}}
         onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";e.currentTarget.style.boxShadow="none";}}>
           <div style={{width:44,height:44,margin:"0 auto 10px",borderRadius:12,background:"#E6F1FB",display:"flex",alignItems:"center",justifyContent:"center"}}>{item.icon()}</div>
@@ -2357,14 +2357,14 @@ function ManagementConsole({ onOpenProject }) {
       <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
         <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Pipeline (est.)</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(totalPipeEst)}</div></div>
         <div style={{background:"#E6F1FB",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#0C447C",textTransform:"uppercase",letterSpacing:"0.06em"}}>Forecast-adjusted</div><div style={{fontSize:22,fontWeight:500,color:"#0C447C"}}>{fmtC(totalFcst)}</div></div>
-        <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Weighted forecast</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(totalFcstWeighted)}</div></div>
+        <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Total forecast</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(totalFcst)}</div></div>
         <div style={{background:"#EAF3DE",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#173404",textTransform:"uppercase",letterSpacing:"0.06em"}}>Closed YTD</div><div style={{fontSize:22,fontWeight:500,color:"#173404"}}>{fmtC(totalRevSold)}</div></div>
-        <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Projected total</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(totalRevSold + totalFcstWeighted)}</div></div>
+        <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Projected total</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(totalRevSold + totalFcst)}</div></div>
       </div>
       <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
           <thead><tr style={{borderBottom:"2px solid #e8e6df"}}>
-            <th style={thL}>Stage</th><th style={thS}>Projects</th><th style={thS}>Est. $</th><th style={thS}>Forecast $</th><th style={thS}>Weight</th><th style={thS}>Weighted $</th>
+            <th style={thL}>Stage</th><th style={thS}>Projects</th><th style={thS}>Est. $</th><th style={thS}>Forecast $</th>
           </tr></thead>
           <tbody>{STAGES.filter(function(s){return s!=="Sold"&&s!=="Lost";}).map(function(s,i) {
             var d = data.pipelineByStage[s] || { count: 0, estTotal: 0, weighted: 0, fcstTotal: 0, fcstWeighted: 0 };
@@ -2384,11 +2384,11 @@ function ManagementConsole({ onOpenProject }) {
             <td style={tdS}>{fmtC(totalPipeEst)}</td>
             <td style={Object.assign({},tdS,{color:"#185FA5"})}>{fmtC(totalFcst)}</td>
             <td style={tdS}></td>
-            <td style={Object.assign({},tdBold,{color:"#185FA5"})}>{fmtC(totalFcstWeighted)}</td>
+            
           </tr></tfoot>
         </table>
       </div>
-      <div style={{marginTop:12,fontSize:12,color:"#8a8780"}}>Forecast $ uses forecast amount when entered, falls back to estimate. Weighted = forecast × stage probability (5% → 90%).</div>
+      <div style={{marginTop:12,fontSize:12,color:"#8a8780"}}>Forecast $ uses your manually entered forecast amount when available, falls back to estimate amount.</div>
 
       {data.forecastAccuracy && data.forecastAccuracy.length > 0 && <div style={{marginTop:20}}>
         <div style={{fontSize:13,fontWeight:600,color:"#6b6960",marginBottom:8}}>Forecast accuracy — sold projects that had a forecast</div>
@@ -2452,6 +2452,7 @@ function ManagementConsole({ onOpenProject }) {
     {section === "sops" && <SOPViewer/>}
 
     {/* === STALE COMPLIANCE === */}
+    {section === "changeorders" && <OpenChangeOrders onOpenProject={onOpenProject}/>}
     {section === "stale" && <div>
       <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
@@ -3391,7 +3392,7 @@ function LifeAndDeath({ onOpenProject }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <select style={{ ...filtS, fontWeight: 600 }} value={year} onChange={e => setYear(parseInt(e.target.value))}>
-          {Array.from({ length: 10 }, (_, i) => curYear - i).map(y => <option key={y} value={y}>{y}</option>)}
+          {Array.from({ length: curYear - 2025 }, (_, i) => curYear - i).map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <span style={{ fontSize: 13, color: "#8a8780" }}>
           {data.sold.length} sold · {data.lost.length} lost · {data.active.length} active · {fmtC(data.sold.reduce((s, p) => s + (parseFloat(p.sale_amount) || 0), 0))} revenue{data.changeOrders.length > 0 ? ` · ${data.changeOrders.filter(c => c.status === "Approved").length} change orders (${fmtC(data.changeOrders.filter(c => c.status === "Approved").reduce((s, c) => s + (parseFloat(c.sale_amount) || 0), 0))})` : ""}
@@ -5381,7 +5382,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [quickView, setQuickView] = useState("active");
+  const [quickView, setQuickView] = useState("all");
   const [fStage, setFStage] = useState(ACTIVE_STAGES.slice());
   const [fType, setFType] = useState([]);
   const [fLoc, setFLoc] = useState([]);
@@ -5503,7 +5504,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
   return (<div style={{maxWidth:1200,margin:"0 auto"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginBottom:16,padding:"0 4px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
-        <h1 onClick={function(){if(!mgmtAccess)return;var ref=headerClickRef.current;ref.count++;clearTimeout(ref.timer);if(ref.count>=3){ref.count=0;setProjectView("hiddenconsole");setSection("projects");}else{ref.timer=setTimeout(function(){ref.count=0;},600);}}} style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:"-0.03em",color:"#1a1a1a",cursor:"default",userSelect:"none"}}>TLG<span style={{color:"#185FA5",marginLeft:4}}>CRM</span></h1>
+        <h1 onClick={function(){if(!mgmtAccess)return;var ref=headerClickRef.current;ref.count++;clearTimeout(ref.timer);if(ref.count>=3){ref.count=0;setProjectView("hiddenconsole");setSection("projects");}else{ref.timer=setTimeout(function(){ref.count=0;},600);}}} style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:"-0.03em",color:"#1a1a1a",cursor:"default",userSelect:"none"}}>TLG<span style={{color:"#185FA5",marginLeft:4}}>LMS</span></h1>
         {projectView!=="home"&&!detailView&&<button onClick={function(){setProjectView("home");setSection("projects");setDetailView(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#185FA5",fontWeight:600,padding:"4px 8px"}}>Home</button>}
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -5527,21 +5528,21 @@ function AuthenticatedApp({ authUser, onLogout }) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480,padding:"0 4px"}}>
         {[
           {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;}},
-          {id:"pipeline",label:"Pipeline",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
-          {id:"dashboard",label:"Dashboard",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;}},
-          {id:"changeorders",label:"Change orders",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>;}},
+          {id:"pipeline",label:"Kanban",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
+          {id:"dashboard",label:"Sales Funnel",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;}},
           {id:"stale",label:"Stale alerts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;}},
           {id:"ordertrack",label:"Order Tracking",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>;}},
+          {id:"pipeforecast",label:"Forecast",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
+          {id:"sops",label:"SOPs",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>;}},
           {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;}},
           {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;}},
-          {id:"_estimator",label:"Estimator",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/><circle cx="16" cy="16" r="2"/></svg>;},external:"https://tlg-estimator.vercel.app/"},
           {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/"}
         ].map(function(item) {
           var isExternal = item.external;
           return <div key={item.id} onClick={function(){
             if (isExternal) { window.open(item.external, "_blank"); }
             else if (item.id === "contacts") { setSection("contacts"); setProjectView("contactsview"); }
-            else { setSection("projects"); setProjectView(item.id); }
+            else if (item.id === "pipeforecast") { setSection("projects"); setProjectView("mgmtconsole"); setTimeout(function(){var evt=new CustomEvent("mc-section",{detail:"pipeline"});window.dispatchEvent(evt);},100); } else { setSection("projects"); setProjectView(item.id); }
           }} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s",position:"relative"}}
           onMouseEnter={function(e){e.currentTarget.style.borderColor="#185FA5";e.currentTarget.style.boxShadow="0 2px 8px rgba(36,63,129,0.1)";}}
           onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";e.currentTarget.style.boxShadow="none";}}>
@@ -5564,6 +5565,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
       {projectView==="stale"&&<StaleAlerts onOpenProject={openProject}/>}
       {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
       {projectView==="ordertrack"&&<OrderDashboard onOpenProject={openProject}/>}
+      {projectView==="sops"&&<SOPViewer/>}
       {projectView==="lifedeath"&&<LifeAndDeath onOpenProject={openProject}/>}
       {projectView==="mgmtconsole"&&mgmtAccess&&<ManagementConsole onOpenProject={openProject}/>}
       {projectView==="hiddenconsole"&&mgmtAccess&&<HiddenConsole authUser={authUser}/>}
