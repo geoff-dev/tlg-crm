@@ -3806,6 +3806,11 @@ function ForecastView() {
   var [data, setData] = useState(null);
   var [loading, setLoading] = useState(true);
   var curYear = new Date().getFullYear();
+  var thS = {padding:"8px 10px",textAlign:"right",fontSize:12,fontWeight:500,color:"#8a8780",whiteSpace:"nowrap"};
+  var thL = Object.assign({}, thS, {textAlign:"left"});
+  var tdS = {padding:"8px 10px",textAlign:"right",fontSize:13};
+  var tdBold = {padding:"8px 10px",textAlign:"right",fontSize:13,fontWeight:600};
+  var tdL = {padding:"10px 10px",fontSize:13};
 
   useEffect(function() {
     Promise.all([
