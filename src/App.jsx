@@ -2307,16 +2307,6 @@ function ManagementConsole({ onOpenProject }) {
         </div>;
       })}
     </div>}
-    {section==="mchome"&&<div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480}}>
-      <div onClick={function(){setSection("stale");}} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s"}}
-        onMouseEnter={function(e){e.currentTarget.style.borderColor="#243F81";e.currentTarget.style.boxShadow="0 2px 8px rgba(36,63,129,0.1)";}}
-        onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";e.currentTarget.style.boxShadow="none";}}>
-        <div style={{width:44,height:44,margin:"0 auto 10px",borderRadius:12,background:"#E6F1FB",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <div style={{fontSize:12,fontWeight:600,color:"#243F81"}}>Stale Lead Analysis</div>
-      </div>
-    </div>}
     {section==="mchome"&&<div>
       <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:8,marginBottom:8}}>SEO & Analytics</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480}}>
