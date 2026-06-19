@@ -2293,6 +2293,7 @@ function ManagementConsole({ onOpenProject }) {
         {id:"lost",label:"Lost Deal Analysis",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;}},
         {id:"reports",label:"Reports",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>;}},
         {id:"goals",label:"Goals",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;}},
+        {id:"pipeline",label:"Forecast",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
         {id:"performance",label:"Performance",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>;}},
         {id:"changeorders",label:"Change Orders",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>;}},
         {id:"_estimator",label:"Estimator",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/><circle cx="16" cy="16" r="2"/></svg>;}},
@@ -2475,6 +2476,7 @@ function ManagementConsole({ onOpenProject }) {
     {section === "sops" && <SOPViewer/>}
 
     {/* === STALE COMPLIANCE === */}
+    {section === "pipeline" && <ForecastView/>}
     {section === "changeorders" && <OpenChangeOrders onOpenProject={onOpenProject}/>}
     {section === "stale" && <div>
       <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
@@ -5651,7 +5653,6 @@ function AuthenticatedApp({ authUser, onLogout }) {
           {id:"dashboard",label:"Sales Funnel",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"stale",label:"Stale alerts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"ordertrack",label:"Order Tracking",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
-          {id:"pipeforecast",label:"Forecast",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"sops",label:"SOPs",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;},roles:["Owner","Admin","Sales"]},
@@ -5685,8 +5686,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
       {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
       {projectView==="ordertrack"&&<OrderDashboard onOpenProject={openProject}/>}
       {projectView==="sops"&&<SOPViewer/>}
-      {projectView==="pipeforecast"&&<ForecastView/>}
-      {projectView==="lifedeath"&&<LifeAndDeath onOpenProject={openProject}/>}
+            {projectView==="lifedeath"&&<LifeAndDeath onOpenProject={openProject}/>}
       {projectView==="mgmtconsole"&&mgmtAccess&&<ManagementConsole onOpenProject={openProject}/>}
       {projectView==="hiddenconsole"&&mgmtAccess&&<HiddenConsole authUser={authUser}/>}
       {projectView==="list"&&isProduction&&<div>
