@@ -529,7 +529,7 @@ function ActivityLog({ activities, projectId, contactId, onAdd, defaultAuthor })
 }
 
 /* ── Project Detail ── */
-function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser }) {
+function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isProduction }) {
   const [contact, setContact] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -567,6 +567,29 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser }) {
   };
 
   if (loading) return <div style={{padding:20,color:"#8a8780"}}>Loading project...</div>;
+
+  if (isProduction) {
+    return (<div>
+      <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#185FA5",fontWeight:600,padding:"0 0 16px"}}>← Back</button>
+      <div style={{background:"#fff",borderRadius:14,border:"1px solid #e8e6df",padding:"20px 24px",boxShadow:cardShadow}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:4}}>
+          <h2 style={{margin:0,fontSize:20,fontWeight:600}}>{project.job_name||"Project"}</h2><Badge stage={project.stage}/>
+        </div>
+        <div style={{fontSize:13,color:"#6b6960",marginBottom:16}}>{form.project_type&&<span>{form.project_type} · </span>}{project.job_location&&<span>{project.job_location}</span>}</div>
+
+        {contact&&<><SH>Project location</SH><div style={{display:"flex",flexWrap:"wrap",gap:20,fontSize:14}}>
+          <div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Client</span><br/><span style={{fontWeight:500}}>{(contact.first_name||"")+" "+(contact.last_name||"")}</span></div>
+          {contact.address&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Address</span><br/>{contact.address+", "+(contact.city||"")+" "+(contact.state||"")+" "+(contact.zip||"")}</div>}
+          {contact.address&&<div style={{display:"flex",alignItems:"flex-end"}}><button onClick={function(e){e.stopPropagation();var name=(contact.first_name||"")+" "+(contact.last_name||"");var addr=contact.address+"\n"+(contact.city||"")+", "+(contact.state||"")+" "+(contact.zip||"");var jobName=form.job_name||"Project";var text=jobName+"\n"+name.trim()+"\n"+addr;if(navigator.share){navigator.share({title:jobName,text:text}).catch(function(){});}else{navigator.clipboard.writeText(text).then(function(){alert("Address copied to clipboard!");});}}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #d0cec7",background:"#fff",color:"#185FA5",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>📤 Share Address</button></div>}
+          {contact.subdivision&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Subdivision</span><br/>{contact.subdivision}</div>}
+          {contact.cross_streets&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Cross streets</span><br/>{contact.cross_streets}</div>}
+        </div></>}
+
+        <ChangeOrders projectId={project.id} contactId={project.contact_id}/>
+        <OrderTracker projectId={project.id} contactId={project.contact_id}/>
+      </div>
+    </div>);
+  }
 
   return (<div>
     <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#185FA5",fontWeight:600,padding:"0 0 16px"}}>← Back</button>
@@ -731,7 +754,7 @@ function ContactDetail({ contact, onBack, onSaved, onOpenProject, authUser }) {
 }
 
 /* ── Pipeline View ── */
-function PipelineView({ onOpenProject }) {
+function PipelineView({ onOpenProject, readOnly }) {
   const [data, setData] = useState(null);
   const [contacts, setContacts] = useState({});
   const [activityDates, setActivityDates] = useState({});
@@ -5377,6 +5400,17 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const [showNewContact, setShowNewContact] = useState(false);
   var headerClickRef = useRef({count:0,timer:null});
   const mgmtAccess = authUser.role === "Owner" || authUser.role === "Admin";
+  const isProduction = authUser.role === "Production";
+
+  useEffect(function() {
+    if (isProduction) {
+      sbGet("ops_project_schedule", "select=project_id&limit=500").then(function(r) {
+        var ids = {}; (r||[]).forEach(function(s){if(s.project_id)ids[s.project_id]=true;});
+        setSchedulerProjectIds(ids);
+      });
+    }
+  }, [isProduction]);
+  const [schedulerProjectIds, setSchedulerProjectIds] = useState(null);
   const [projects, setProjects] = useState([]);
   const [projectContacts, setProjectContacts] = useState({});
   const [totalCount, setTotalCount] = useState(0);
@@ -5495,7 +5529,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
 
   var detailElement = null;
   if (detailView) {
-    if (detailView.type==="project") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ProjectDetail project={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){cacheClear("projects");loadProjects();}} onOpenContact={function(c){setDetailView({type:"contact",data:c});}} authUser={authUser}/></div>;
+    if (detailView.type==="project") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ProjectDetail project={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){cacheClear("projects");loadProjects();}} onOpenContact={function(c){setDetailView({type:"contact",data:c});}} authUser={authUser} isProduction={isProduction}/></div>;
     if (detailView.type==="contact") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ContactDetail contact={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){}} onOpenProject={function(p){setDetailView({type:"project",data:p});}} authUser={authUser}/></div>;
   }
 
@@ -5522,22 +5556,22 @@ function AuthenticatedApp({ authUser, onLogout }) {
 
     {projectView==="home"&&<div>
       <div style={{display:"flex",gap:8,marginBottom:20,padding:"0 4px"}}>
-        <button onClick={function(){setShowNewProject(true);}} style={{...btnP,fontSize:13,padding:"8px 18px"}}>+ New project</button>
-        <button onClick={function(){setShowNewContact(true);}} style={{...btnSec,fontSize:13,padding:"8px 18px"}}>+ New contact</button>
+        {!isProduction&&<button onClick={function(){setShowNewProject(true);}} style={{...btnP,fontSize:13,padding:"8px 18px"}}>+ New project</button>}
+        {!isProduction&&<button onClick={function(){setShowNewContact(true);}} style={{...btnSec,fontSize:13,padding:"8px 18px"}}>+ New contact</button>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480,padding:"0 4px"}}>
         {[
-          {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;}},
-          {id:"pipeline",label:"Kanban",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
-          {id:"dashboard",label:"Sales Funnel",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;}},
-          {id:"stale",label:"Stale alerts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;}},
-          {id:"ordertrack",label:"Order Tracking",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>;}},
-          {id:"pipeforecast",label:"Forecast",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;}},
-          {id:"sops",label:"SOPs",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>;}},
-          {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;}},
-          {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;}},
-          {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/"}
-        ].map(function(item) {
+          {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
+          {id:"pipeline",label:"Kanban",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
+          {id:"dashboard",label:"Sales Funnel",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;},roles:["Owner","Admin","Sales"]},
+          {id:"stale",label:"Stale alerts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;},roles:["Owner","Admin","Sales"]},
+          {id:"ordertrack",label:"Order Tracking",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
+          {id:"pipeforecast",label:"Forecast",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;},roles:["Owner","Admin","Sales"]},
+          {id:"sops",label:"SOPs",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>;},roles:["Owner","Admin","Sales"]},
+          {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;},roles:["Owner","Admin","Sales"]},
+          {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;},roles:["Owner","Admin","Sales"]},
+          {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/",roles:["Owner","Admin","Sales","Production"]}
+        ].filter(function(item){return !item.roles||item.roles.indexOf(authUser.role)>=0;}).map(function(item) {
           var isExternal = item.external;
           return <div key={item.id} onClick={function(){
             if (isExternal) { window.open(item.external, "_blank"); }
@@ -5561,7 +5595,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
 
     {(projectView!=="home"&&projectView!=="contactsview")&&<div>
       {projectView==="dashboard"&&<Dashboard onOpenProject={openProject}/>}
-      {projectView==="pipeline"&&<PipelineView onOpenProject={openProject}/>}
+      {projectView==="pipeline"&&<PipelineView onOpenProject={isProduction?function(){}:openProject} readOnly={isProduction}/>}
       {projectView==="stale"&&<StaleAlerts onOpenProject={openProject}/>}
       {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
       {projectView==="ordertrack"&&<OrderDashboard onOpenProject={openProject}/>}
@@ -5569,7 +5603,18 @@ function AuthenticatedApp({ authUser, onLogout }) {
       {projectView==="lifedeath"&&<LifeAndDeath onOpenProject={openProject}/>}
       {projectView==="mgmtconsole"&&mgmtAccess&&<ManagementConsole onOpenProject={openProject}/>}
       {projectView==="hiddenconsole"&&mgmtAccess&&<HiddenConsole authUser={authUser}/>}
-      {projectView==="list"&&<div>
+      {projectView==="list"&&isProduction&&<div>
+        <div style={{fontSize:14,fontWeight:600,color:"#243F81",marginBottom:12}}>Active production projects</div>
+        {schedulerProjectIds===null&&<div style={{padding:20,color:"#8a8780"}}>Loading...</div>}
+        {schedulerProjectIds&&projects.filter(function(p){return schedulerProjectIds[p.id];}).length===0&&<div style={{padding:20,color:"#8a8780",fontSize:13}}>No projects currently in the production schedule.</div>}
+        {schedulerProjectIds&&projects.filter(function(p){return schedulerProjectIds[p.id];}).map(function(p){
+          return <div key={p.id} onClick={function(){openProject(p);}} style={{background:"#fff",border:"0.5px solid #e8e6df",borderRadius:10,padding:"12px 16px",marginBottom:6,cursor:"pointer"}} onMouseEnter={function(e){e.currentTarget.style.borderColor="#185FA5";}} onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";}}>
+            <div style={{fontSize:14,fontWeight:600}}>{p.job_name||"Project"}</div>
+            <div style={{fontSize:12,color:"#8a8780",marginTop:2}}>{p.project_type||""}{p.job_location?" · "+p.job_location:""}</div>
+          </div>;
+        })}
+      </div>}
+      {projectView==="list"&&!isProduction&&<div>
         <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
           {[["active","Active"],["all","All"],["sold","Sold"],["lost","Lost"],["new","New this month"],["estimated","Estimated +"]].map(function(v) {
             var active = quickView === v[0];
