@@ -5496,6 +5496,367 @@ export default function App() {
   return <AuthenticatedApp authUser={authUser} onLogout={handleLogout} />;
 }
 
+/* ── Open Items (pre-sale tracker) ── */
+const ITEM_TYPES = [["follow_up","Follow-Up","#1E40AF"],["site_visit","Site Visit","#0E7490"],["measure","Measure","#0F766E"],["selection","Selection","#7C3AED"],["design_revision","Design Revision","#BE185D"],["pricing","Pricing","#B45309"],["proposal","Proposal","#2D6A4F"],["contract","Contract","#4F46E5"],["financing","Financing","#B91C1C"],["planning","Planning","#6B7280"],["other","Other","#8A8480"]];
+const ITEM_STATUS = [["open","Open","#5B6472"],["working","Working","#1E40AF"],["blocked","Blocked","#B91C1C"],["resolved","Resolved","#B45309"],["closed","Closed","#2D6A4F"]];
+const ENTRY_TYPES = ["Note","Call","Text","Email","Site Visit","Meeting","Scheduling"];
+function typeMeta(v) { for (var i=0;i<ITEM_TYPES.length;i++) { if (ITEM_TYPES[i][0]===v) return ITEM_TYPES[i]; } return ["other","Other","#8A8480"]; }
+function statusMeta(v) { for (var i=0;i<ITEM_STATUS.length;i++) { if (ITEM_STATUS[i][0]===v) return ITEM_STATUS[i]; } return ["open","Open","#5B6472"]; }
+
+function OpenItemsView({ authUser, onOpenProject }) {
+  const [items, setItems] = useState(null);
+  const [notes, setNotes] = useState([]);
+  const [projMap, setProjMap] = useState({});
+  const [picker, setPicker] = useState([]);
+  const [fStatus, setFStatus] = useState("all");
+  const [escOnly, setEscOnly] = useState(false);
+  const [timeOnly, setTimeOnly] = useState(false);
+  const [groupBy, setGroupBy] = useState("client");
+  const [fType, setFType] = useState("all");
+  const [fStage, setFStage] = useState("all");
+  const [fOwner, setFOwner] = useState("all");
+  const [showFilter, setShowFilter] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const [showNew, setShowNew] = useState(false);
+  const [delItem, setDelItem] = useState(null);
+  const [resolveFor, setResolveFor] = useState(null);
+  const [resolveText, setResolveText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [noteAuthor, setNoteAuthor] = useState(authUser.name);
+  const [niClient, setNiClient] = useState("");
+  const [niProjId, setNiProjId] = useState("");
+  const [niLabel, setNiLabel] = useState("");
+  const [niType, setNiType] = useState("other");
+  const [niOwner, setNiOwner] = useState(authUser.name);
+  const [niDue, setNiDue] = useState("");
+  const [noteBody, setNoteBody] = useState("");
+  const [noteType, setNoteType] = useState("Note");
+
+  useEffect(function() {
+    var alive = true;
+    (async function() {
+      var its = await sbGet("crm_items", "select=*&order=created_at.desc&limit=1000");
+      if (!alive) return;
+      var nts = await sbGet("crm_item_notes", "select=*&order=created_at.asc&limit=3000");
+      var pk = await sbGet("projects", "select=id,job_name,stage,salesperson&stage=not.in.(Sold,Lost)&order=job_name.asc&limit=1000");
+      var map = {};
+      (pk||[]).forEach(function(p){ map[p.id] = p; });
+      var missing = [];
+      (its||[]).forEach(function(t){ if (t.project_id && !map[t.project_id] && missing.indexOf(t.project_id)<0) missing.push(t.project_id); });
+      if (missing.length > 0) {
+        var extra = await sbGet("projects", "select=id,job_name,stage,salesperson&id=in.(" + missing.join(",") + ")");
+        (extra||[]).forEach(function(p){ map[p.id] = p; });
+      }
+      if (!alive) return;
+      setPicker(pk||[]); setProjMap(map); setNotes(nts||[]); setItems(its||[]);
+    })();
+    return function(){ alive = false; };
+  }, []);
+
+  function patch(id, body) {
+    setItems(function(prev){ return prev.map(function(t){ return t.id===id ? {...t, ...body} : t; }); });
+    setSaving(true);
+    sbUpdate("crm_items", id, body).then(function(){ setSaving(false); });
+  }
+
+  function itemStage(t) {
+    var p = t.project_id ? projMap[t.project_id] : null;
+    if (p && p.stage) return p.stage;
+    return t.stage || "";
+  }
+  function itemGroupName(t) {
+    var p = t.project_id ? projMap[t.project_id] : null;
+    if (p && p.job_name) return p.job_name;
+    return t.client_name || "Unassigned";
+  }
+
+  function toggleResolve(t) {
+    if (t.status === "resolved" || t.status === "closed") { patch(t.id, {status:"open", resolved_at:null}); return; }
+    if (t.resolution) { patch(t.id, {status:"resolved", resolved_at:new Date().toISOString()}); return; }
+    setResolveFor(t); setResolveText("");
+  }
+  function saveResolve() {
+    if (!resolveFor) return;
+    var txt = resolveText.trim();
+    if (!txt) { alert("Add a quick summary of what got resolved."); return; }
+    patch(resolveFor.id, {status:"resolved", resolution:txt, resolved_at:new Date().toISOString()});
+    setResolveFor(null); setResolveText("");
+  }
+  function setStatus(t, v) {
+    if (v === "resolved" && !t.resolution) { setResolveFor(t); setResolveText(""); return; }
+    var body = {status:v};
+    if (v === "resolved") body.resolved_at = t.resolved_at || new Date().toISOString();
+    else if (v !== "closed") body.resolved_at = null;
+    patch(t.id, body);
+  }
+  async function doDelete() {
+    if (!delItem) return;
+    var id = delItem.id; setDelItem(null); setSaving(true);
+    setItems(function(prev){ return prev.filter(function(t){ return t.id !== id; }); });
+    await sbDelete("crm_items", id); setSaving(false);
+  }
+  async function addItem() {
+    var label = niLabel.trim();
+    if (!label) { alert("Add a description for the item."); return; }
+    setSaving(true);
+    var body = { label: label, item_type: niType, status: "open", owner: niOwner || null,
+      project_id: niProjId || null, client_name: niProjId ? null : (niClient.trim() || null),
+      stage: niProjId && projMap[niProjId] ? projMap[niProjId].stage : null,
+      due_date: niDue || null, sort_order: (items ? items.length : 0) + 1 };
+    var r = await sbInsert("crm_items", body);
+    setSaving(false);
+    if (r) {
+      setItems(function(prev){ return [r].concat(prev||[]); });
+      setShowNew(false); setNiLabel(""); setNiClient(""); setNiProjId(""); setNiType("other"); setNiDue("");
+    }
+  }
+  async function addNote(t) {
+    var b = noteBody.trim();
+    if (!b) return;
+    setSaving(true);
+    var r = await sbInsert("crm_item_notes", { item_id: t.id, entry_type: noteType, author: noteAuthor, body: b });
+    setSaving(false);
+    if (r) { setNotes(function(prev){ return prev.concat([r]); }); setNoteBody(""); }
+  }
+
+  if (items === null) return <div style={{padding:20,color:"#8a8780"}}>Loading open items…</div>;
+
+  var visible = items.filter(function(t) {
+    if (fStatus === "all") { if (t.status === "closed") return false; }
+    else if (t.status !== fStatus) return false;
+    if (escOnly && !t.escalate) return false;
+    if (timeOnly && !t.time_sensitive) return false;
+    if (fType !== "all" && (t.item_type||"other") !== fType) return false;
+    if (fOwner !== "all" && (t.owner||"") !== fOwner) return false;
+    if (fStage !== "all" && itemStage(t) !== fStage) return false;
+    return true;
+  });
+
+  var groups = {};
+  visible.forEach(function(t) {
+    var k;
+    if (groupBy === "client") k = itemGroupName(t);
+    else if (groupBy === "stage") k = itemStage(t) || "No stage";
+    else if (groupBy === "type") k = typeMeta(t.item_type)[1];
+    else if (groupBy === "owner") k = t.owner || "Unassigned";
+    else k = statusMeta(t.status)[1];
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(t);
+  });
+  var groupKeys = Object.keys(groups).sort();
+  Object.keys(groups).forEach(function(k) {
+    groups[k].sort(function(a,b) {
+      if (!!b.time_sensitive !== !!a.time_sensitive) return b.time_sensitive ? 1 : -1;
+      if (!!b.escalate !== !!a.escalate) return b.escalate ? 1 : -1;
+      return (b.created_at||"") < (a.created_at||"") ? -1 : 1;
+    });
+  });
+
+  var openCt = items.filter(function(t){ return t.status!=="closed"; }).length;
+  var escCt = items.filter(function(t){ return t.escalate && t.status!=="closed"; }).length;
+  var timeCt = items.filter(function(t){ return t.time_sensitive && t.status!=="closed"; }).length;
+  var today = new Date().toISOString().slice(0,10);
+  var owners = [];
+  items.forEach(function(t){ if (t.owner && owners.indexOf(t.owner)<0) owners.push(t.owner); });
+
+  var chip = function(active, color) { return {padding:"5px 12px",borderRadius:7,border:"1px solid "+(active?(color||"#243F81"):"#e8e6df"),background:active?(color||"#243F81"):"#fff",color:active?"#fff":"#6b6960",fontSize:12,fontWeight:600,cursor:"pointer"}; };
+  var selSty = {padding:"5px 7px",border:"1px solid #e2e6ed",borderRadius:6,fontSize:12,background:"#fff",fontFamily:"inherit"};
+
+  return <div style={{padding:"0 4px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+      <div>
+        <div style={{fontSize:18,fontWeight:700}}>Open Items</div>
+        <div style={{fontSize:12,color:"#8a8780"}}>{openCt} open · things to move a project to Sold{saving?" · saving…":""}</div>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={function(){setShowFilter(true);}} style={{...btnSec,fontSize:13,padding:"8px 14px"}}>⚙ Filter</button>
+        <button onClick={function(){setShowNew(true);}} style={{...btnP,fontSize:13,padding:"8px 16px"}}>+ New item</button>
+      </div>
+    </div>
+
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+      {[["all","All"]].concat(ITEM_STATUS.map(function(s){return [s[0],s[1]];})).map(function(s) {
+        return <button key={s[0]} onClick={function(){setFStatus(s[0]);}} style={chip(fStatus===s[0], s[0]==="all"?"#243F81":statusMeta(s[0])[2])}>{s[1]}</button>;
+      })}
+      <button onClick={function(){setEscOnly(!escOnly);}} style={chip(escOnly,"#B91C1C")}>🚩 Escalated{escCt>0?" ("+escCt+")":""}</button>
+      <button onClick={function(){setTimeOnly(!timeOnly);}} style={chip(timeOnly,"#B45309")}>⏰ Time-sensitive{timeCt>0?" ("+timeCt+")":""}</button>
+    </div>
+
+    {(fType!=="all"||fStage!=="all"||fOwner!=="all"||groupBy!=="client")&&<div style={{marginBottom:10,fontSize:12,color:"#6b6960"}}>
+      Filtered · <button onClick={function(){setFType("all");setFStage("all");setFOwner("all");setGroupBy("client");}} style={{background:"none",border:"none",color:"#185FA5",cursor:"pointer",fontSize:12,fontWeight:600,padding:0,textDecoration:"underline"}}>reset</button>
+    </div>}
+
+    {groupKeys.length===0&&<div style={{padding:"40px 20px",textAlign:"center",color:"#8a8780",fontSize:13,background:"#fff",borderRadius:12,border:"1px solid #e8e6df"}}>
+      {items.length===0?"No items yet. Tap + New item to add the first one.":"Nothing matches these filters."}
+    </div>}
+
+    {groupKeys.map(function(gk) {
+      return <div key={gk} style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"#faf8f5",borderRadius:"8px 8px 0 0",border:"1px solid #e8e6df",borderBottom:"none"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#2c2a28"}}>{gk} <span style={{color:"#9a948e",fontWeight:600}}>({groups[gk].length})</span></div>
+          {groupBy==="client"&&<button onClick={function(){ var t0=groups[gk][0]; setNiProjId(t0.project_id||""); setNiClient(t0.project_id?"":(t0.client_name||"")); setShowNew(true); }} style={{background:"none",border:"none",color:"#185FA5",cursor:"pointer",fontSize:12,fontWeight:600}}>+ Add</button>}
+        </div>
+        <div style={{border:"1px solid #e8e6df",borderRadius:"0 0 8px 8px",overflow:"hidden"}}>
+          {groups[gk].map(function(t, idx) {
+            var tm = typeMeta(t.item_type), sm = statusMeta(t.status);
+            var isOpen = expanded===t.id;
+            var myNotes = notes.filter(function(n){ return n.item_id===t.id; });
+            var overdue = t.due_date && t.due_date < today && t.status!=="resolved" && t.status!=="closed";
+            return <div key={t.id} style={{borderTop:idx>0?"1px solid #f0ede9":"none",background:"#fff",borderLeft:"4px solid "+tm[2]}}>
+              <div style={{padding:"10px 12px"}}>
+                <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                  <div onClick={function(){toggleResolve(t);}} style={{width:24,height:24,minWidth:24,borderRadius:6,border:"2px solid "+((t.status==="resolved"||t.status==="closed")?"#2D6A4F":"#d0cec7"),background:(t.status==="resolved"||t.status==="closed")?"#2D6A4F":"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:700,marginTop:1}}>{(t.status==="resolved"||t.status==="closed")?"✓":""}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:600,color:"#2c2a28",lineHeight:1.35,textDecoration:t.status==="closed"?"line-through":"none"}}>
+                      {t.time_sensitive?"⏰ ":""}{t.escalate?"🚩 ":""}{t.label}
+                    </div>
+                    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginTop:6}}>
+                      <span style={{fontSize:10,fontWeight:700,color:tm[2],background:tm[2]+"14",padding:"2px 7px",borderRadius:4}}>{tm[1]}</span>
+                      <span style={{fontSize:10,fontWeight:700,color:"#fff",background:sm[2],padding:"2px 7px",borderRadius:4}}>{sm[1]}</span>
+                      {itemStage(t)&&<span style={{fontSize:10,color:"#6b6960",background:"#f2f0eb",padding:"2px 7px",borderRadius:4}}>{itemStage(t)}</span>}
+                      {t.owner&&<span style={{fontSize:10,color:"#6b6960"}}>· {t.owner}</span>}
+                      {t.due_date&&<span style={{fontSize:10,fontWeight:overdue?700:400,color:overdue?"#B91C1C":"#6b6960"}}>· due {fmtD(t.due_date)}{overdue?" (late)":""}</span>}
+                      <button onClick={function(){setExpanded(isOpen?null:t.id);setNoteBody("");}} style={{background:"none",border:"none",color:"#185FA5",cursor:"pointer",fontSize:11,fontWeight:600,padding:0,marginLeft:"auto"}}>{myNotes.length>0?"💬 "+myNotes.length+" ":""}{isOpen?"Close":"Open"}</button>
+                    </div>
+                  </div>
+                </div>
+                {t.resolution&&!isOpen&&<div style={{marginTop:8,marginLeft:34,fontSize:12,color:"#2D6A4F",background:"#f0f7f2",border:"1px solid #c8ddd0",borderRadius:6,padding:"6px 8px"}}>✓ {t.resolution}</div>}
+              </div>
+
+              {isOpen&&<div style={{padding:"12px",borderTop:"1px solid #f0ede9",background:"#fcfbf9"}}>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                  <select value={t.status} onChange={function(e){setStatus(t, e.target.value);}} style={selSty}>
+                    {ITEM_STATUS.map(function(s){ return <option key={s[0]} value={s[0]}>{s[1]}</option>; })}
+                  </select>
+                  <select value={t.owner||""} onChange={function(e){patch(t.id,{owner:e.target.value||null});}} style={selSty}>
+                    <option value="">Owner…</option>
+                    {ACTIVE_TEAM.map(function(s){ return <option key={s} value={s}>{s}</option>; })}
+                  </select>
+                  <select value={t.item_type||"other"} onChange={function(e){patch(t.id,{item_type:e.target.value});}} style={{...selSty,color:tm[2],fontWeight:700}}>
+                    {ITEM_TYPES.map(function(x){ return <option key={x[0]} value={x[0]}>{x[1]}</option>; })}
+                  </select>
+                  <input type="date" value={t.due_date||""} onChange={function(e){patch(t.id,{due_date:e.target.value||null});}} style={selSty}/>
+                  <button onClick={function(){patch(t.id,{escalate:!t.escalate});}} style={chip(t.escalate,"#B91C1C")}>🚩</button>
+                  <button onClick={function(){patch(t.id,{time_sensitive:!t.time_sensitive});}} style={chip(t.time_sensitive,"#B45309")}>⏰</button>
+                  {t.project_id&&projMap[t.project_id]&&<button onClick={function(){onOpenProject({id:t.project_id});}} style={{...selSty,cursor:"pointer",color:"#185FA5",fontWeight:600}}>Open project →</button>}
+                  {t.status==="resolved"&&<button onClick={function(){patch(t.id,{status:"closed"});}} style={{...selSty,cursor:"pointer",background:"#2D6A4F",color:"#fff",fontWeight:700,border:"none"}}>Put to bed</button>}
+                  <button onClick={function(){setDelItem(t);}} style={{...selSty,cursor:"pointer",color:"#C0392B",fontWeight:600,marginLeft:"auto"}}>🗑</button>
+                </div>
+
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#2D6A4F",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Resolution{t.resolved_at?" · "+fmtTS(t.resolved_at):""}</div>
+                  <textarea defaultValue={t.resolution||""} onBlur={function(e){ if(e.target.value!==(t.resolution||"")) patch(t.id,{resolution:e.target.value||null}); }} placeholder="What was completed / how it was resolved…" style={{width:"100%",minHeight:44,padding:8,border:"1px solid #c8ddd0",borderRadius:6,background:"#f0f7f2",fontFamily:"inherit",fontSize:12,boxSizing:"border-box",resize:"vertical"}}/>
+                </div>
+
+                <div style={{borderTop:"1px solid #eeebe6",paddingTop:10}}>
+                  <div style={{display:"flex",gap:6,marginBottom:6}}>
+                    <select value={noteType} onChange={function(e){setNoteType(e.target.value);}} style={{...selSty,flex:1}}>
+                      {ENTRY_TYPES.map(function(e){ return <option key={e} value={e}>{e}</option>; })}
+                    </select>
+                    <select value={noteAuthor} onChange={function(e){setNoteAuthor(e.target.value);}} style={{...selSty,flex:1}}>
+                      {ACTIVE_TEAM.map(function(s){ return <option key={s} value={s}>{s}</option>; })}
+                    </select>
+                  </div>
+                  <textarea value={noteBody} onChange={function(e){setNoteBody(e.target.value);}} placeholder="Add a note, log a call, record a conversation…" style={{width:"100%",minHeight:52,padding:8,border:"1px solid #e2e6ed",borderRadius:6,fontFamily:"inherit",fontSize:12,boxSizing:"border-box",resize:"vertical"}}/>
+                  <div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}>
+                    <button onClick={function(){addNote(t);}} style={{...btnP,fontSize:12,padding:"7px 16px"}}>Add entry</button>
+                  </div>
+                  {myNotes.length===0&&<div style={{padding:"8px 0",textAlign:"center",color:"#9a948e",fontSize:11}}>No entries yet.</div>}
+                  {myNotes.map(function(n) {
+                    return <div key={n.id} style={{padding:"9px 0",borderBottom:"1px solid #f0ede9"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:2}}>
+                        <span style={{fontSize:11,fontWeight:800,color:"#2c2a28"}}>{n.author||"—"}{n.entry_type&&n.entry_type!=="Note"?<span style={{fontSize:8,fontWeight:700,color:"#1E40AF",background:"#eaf1f7",padding:"1px 5px",borderRadius:4,marginLeft:5}}>{n.entry_type}</span>:null}</span>
+                        <span style={{fontSize:10,color:"#9a948e",whiteSpace:"nowrap"}}>{fmtTS(n.created_at)}</span>
+                      </div>
+                      <div style={{fontSize:12,color:"#2c2a28",lineHeight:1.4}}>{n.body}</div>
+                    </div>;
+                  })}
+                </div>
+              </div>}
+            </div>;
+          })}
+        </div>
+      </div>;
+    })}
+
+    {showFilter&&<Modal title="Filter items" onClose={function(){setShowFilter(false);}} width={420}>
+      <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:6}}>Group by</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+        {[["client","Project"],["stage","Stage"],["type","Type"],["owner","Owner"],["status","Status"]].map(function(g) {
+          return <button key={g[0]} onClick={function(){setGroupBy(g[0]);}} style={chip(groupBy===g[0])}>{g[1]}</button>;
+        })}
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:6}}>Stage</div>
+      <select value={fStage} onChange={function(e){setFStage(e.target.value);}} style={{...selSty,width:"100%",padding:9,marginBottom:16}}>
+        <option value="all">All stages</option>
+        {ACTIVE_STAGES.map(function(s){ return <option key={s} value={s}>{s}</option>; })}
+      </select>
+      <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:6}}>Type</div>
+      <select value={fType} onChange={function(e){setFType(e.target.value);}} style={{...selSty,width:"100%",padding:9,marginBottom:16}}>
+        <option value="all">All types</option>
+        {ITEM_TYPES.map(function(x){ return <option key={x[0]} value={x[0]}>{x[1]}</option>; })}
+      </select>
+      <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:6}}>Owner</div>
+      <select value={fOwner} onChange={function(e){setFOwner(e.target.value);}} style={{...selSty,width:"100%",padding:9,marginBottom:18}}>
+        <option value="all">All owners</option>
+        {owners.map(function(s){ return <option key={s} value={s}>{s}</option>; })}
+      </select>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={function(){setFType("all");setFStage("all");setFOwner("all");setGroupBy("client");}} style={{...btnSec,flex:1}}>Reset</button>
+        <button onClick={function(){setShowFilter(false);}} style={{...btnP,flex:1}}>Done</button>
+      </div>
+    </Modal>}
+
+    {showNew&&<Modal title="New item" onClose={function(){setShowNew(false);}} width={440}>
+      <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:5}}>Project</div>
+      <select value={niProjId} onChange={function(e){setNiProjId(e.target.value); if(e.target.value) setNiClient("");}} style={{...selSty,width:"100%",padding:9,marginBottom:8}}>
+        <option value="">— Pick a project —</option>
+        {picker.map(function(p){ return <option key={p.id} value={p.id}>{p.job_name} ({p.stage})</option>; })}
+      </select>
+      {!niProjId&&<input value={niClient} onChange={function(e){setNiClient(e.target.value);}} placeholder="…or type any name (no project yet)" style={{width:"100%",padding:9,border:"1px solid #e2e6ed",borderRadius:8,fontSize:13,boxSizing:"border-box",marginBottom:14,fontFamily:"inherit"}}/>}
+      <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:5,marginTop:6}}>Item</div>
+      <textarea value={niLabel} onChange={function(e){setNiLabel(e.target.value);}} placeholder="What needs to happen?" style={{width:"100%",minHeight:56,padding:9,border:"1px solid #e2e6ed",borderRadius:8,fontSize:13,boxSizing:"border-box",marginBottom:14,resize:"vertical",fontFamily:"inherit"}}/>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:5}}>Type</div>
+          <select value={niType} onChange={function(e){setNiType(e.target.value);}} style={{...selSty,width:"100%",padding:9}}>
+            {ITEM_TYPES.map(function(x){ return <option key={x[0]} value={x[0]}>{x[1]}</option>; })}
+          </select>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:5}}>Owner</div>
+          <select value={niOwner} onChange={function(e){setNiOwner(e.target.value);}} style={{...selSty,width:"100%",padding:9}}>
+            <option value="">—</option>
+            {ACTIVE_TEAM.map(function(s){ return <option key={s} value={s}>{s}</option>; })}
+          </select>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",marginBottom:5}}>Due</div>
+          <input type="date" value={niDue} onChange={function(e){setNiDue(e.target.value);}} style={{...selSty,width:"100%",padding:9}}/>
+        </div>
+      </div>
+      <button onClick={addItem} style={{...btnP,width:"100%",padding:11,fontSize:14}}>Add item</button>
+    </Modal>}
+
+    {resolveFor&&<Modal title="What got resolved?" onClose={function(){setResolveFor(null);}} width={420}>
+      <div style={{fontSize:13,color:"#6b6960",marginBottom:12,lineHeight:1.4}}>{resolveFor.label}</div>
+      <textarea value={resolveText} onChange={function(e){setResolveText(e.target.value);}} autoFocus placeholder="Quick summary everyone will see…" style={{width:"100%",minHeight:70,padding:9,border:"1px solid #c8ddd0",borderRadius:8,background:"#f0f7f2",fontSize:13,boxSizing:"border-box",marginBottom:14,resize:"vertical",fontFamily:"inherit"}}/>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={function(){setResolveFor(null);}} style={{...btnSec,flex:1}}>Cancel</button>
+        <button onClick={saveResolve} style={{...btnP,flex:1}}>Mark resolved</button>
+      </div>
+    </Modal>}
+
+    {delItem&&<Modal title="Delete this item?" onClose={function(){setDelItem(null);}} width={380}>
+      <div style={{fontSize:13,color:"#6b6960",marginBottom:16,lineHeight:1.45}}>{delItem.label}<br/><br/>This removes it for good. If it's finished work you want to keep, close it instead (the ✓ checkbox, then "Put to bed").</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <button onClick={doDelete} style={{padding:10,borderRadius:8,border:"none",background:"#C0392B",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete permanently</button>
+        <button onClick={function(){setDelItem(null);}} style={{...btnSec,padding:10}}>Cancel</button>
+      </div>
+    </Modal>}
+  </div>;
+}
+
 function AuthenticatedApp({ authUser, onLogout }) {
   const [section, setSection] = useState("projects");
   const [projectView, setProjectView] = useState("home");
@@ -5671,6 +6032,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
         {[
           {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"pipeline",label:"Kanban",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
+          {id:"openitems",label:"Open Items",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"dashboard",label:"Sales Funnel",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"stale",label:"Stale alerts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"ordertrack",label:"Order Tracking",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
@@ -5703,6 +6065,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
     {(projectView!=="home"&&projectView!=="contactsview")&&<div>
       {projectView==="dashboard"&&<Dashboard onOpenProject={openProject}/>}
       {projectView==="pipeline"&&<PipelineView onOpenProject={isProduction?function(){}:openProject} readOnly={isProduction}/>}
+      {projectView==="openitems"&&<OpenItemsView authUser={authUser} onOpenProject={openProject}/>}
       {projectView==="stale"&&<StaleAlerts onOpenProject={openProject}/>}
       {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
       {projectView==="ordertrack"&&<OrderDashboard onOpenProject={openProject}/>}
