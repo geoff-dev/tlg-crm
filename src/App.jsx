@@ -2110,7 +2110,7 @@ function Scorecard({ onOpenProject }) {
               <th style={thS}>Actual</th><th style={thS}>Goal</th><th style={thS}>Progress</th>
             </tr>
           </thead>
-          <tbody>{PTYPES.filter(t => (actuals.project_type[t]?.leads || 0) > 0 || getGoal("project_type", t).lead_goal > 0).map(t => <ScoreRow key={t} label={t} actual={actuals.project_type[t]} goal={getGoal("project_type", t)} projects={actuals.project_type[t].projects} color="#3C3489" />)}</tbody>
+          <tbody>{PTYPES.filter(t => { var a = actuals.project_type[t] || {}; var g = getGoal("project_type", t); return (a.leads||0) > 0 || (a.sold||0) > 0 || (a.rev||0) > 0 || (g.lead_goal||0) > 0 || (g.sales_goal||0) > 0 || (g.revenue_goal||0) > 0; }).map(t => <ScoreRow key={t} label={t} actual={actuals.project_type[t]} goal={getGoal("project_type", t)} projects={actuals.project_type[t].projects} color="#3C3489" />)}</tbody>
         </table>
       </div>
 
@@ -2130,7 +2130,7 @@ function Scorecard({ onOpenProject }) {
               <th style={thS}>Actual</th><th style={thS}>Goal</th><th style={thS}>Progress</th>
             </tr>
           </thead>
-          <tbody>{LOCS.filter(l => (actuals.location[l]?.leads || 0) > 0 || getGoal("location", l).lead_goal > 0).map(l => <ScoreRow key={l} label={l} actual={actuals.location[l]} goal={getGoal("location", l)} projects={actuals.location[l].projects} color="#712B13" />)}</tbody>
+          <tbody>{LOCS.filter(l => { var a = actuals.location[l] || {}; var g = getGoal("location", l); return (a.leads||0) > 0 || (a.sold||0) > 0 || (a.rev||0) > 0 || (g.lead_goal||0) > 0 || (g.sales_goal||0) > 0 || (g.revenue_goal||0) > 0; }).map(l => <ScoreRow key={l} label={l} actual={actuals.location[l]} goal={getGoal("location", l)} projects={actuals.location[l].projects} color="#712B13" />)}</tbody>
         </table>
       </div>
 
@@ -2150,7 +2150,7 @@ function Scorecard({ onOpenProject }) {
               <th style={thS}>Actual</th><th style={thS}>Goal</th><th style={thS}>Progress</th>
             </tr>
           </thead>
-          <tbody>{GOAL_LSOURCES.filter(s => (actuals.lead_source[s]?.leads || 0) > 0 || getGoal("lead_source", s).lead_goal > 0).map(s => <ScoreRow key={s} label={s} actual={actuals.lead_source[s] || {leads:0,sold:0,rev:0,projects:[]}} goal={getGoal("lead_source", s)} projects={(actuals.lead_source[s]||{}).projects} color="#534AB7" />)}</tbody>
+          <tbody>{GOAL_LSOURCES.filter(s => { var a = actuals.lead_source[s] || {}; var g = getGoal("lead_source", s); return (a.leads||0) > 0 || (a.sold||0) > 0 || (a.rev||0) > 0 || (g.lead_goal||0) > 0 || (g.sales_goal||0) > 0 || (g.revenue_goal||0) > 0; }).map(s => <ScoreRow key={s} label={s} actual={actuals.lead_source[s] || {leads:0,sold:0,rev:0,projects:[]}} goal={getGoal("lead_source", s)} projects={(actuals.lead_source[s]||{}).projects} color="#534AB7" />)}</tbody>
         </table>
       </div>
 
