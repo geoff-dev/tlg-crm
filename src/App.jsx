@@ -1077,12 +1077,15 @@ function Dashboard({ onOpenProject }) {
       setData(compute(projects)); loadContacts(projects); setLoading(false);
       if(compare) loadYear(year-1).then(cp=>{setCompData(compute(cp));});
     });
-    // Load carryover: prior year leads that are still active or sold/lost in current year
+    // Load carryover: sales booked this year whose lead came in a prior year (any prior year),
+    // plus prior-year leads still active in the pipeline.
     if (year > 2000) {
-      sbGet("projects", `select=${DASH_COLS}&lead_date=gte.${year-1}-01-01&lead_date=lte.${year-1}-12-31&stage=neq.Lost&limit=10000`).then(priorAll => {
-        const still = (priorAll||[]);
-        const active = still.filter(p=>p.stage!=="Sold"&&p.stage!=="Lost");
-        const soldInCurrent = still.filter(p=>p.stage==="Sold"&&p.date_sold&&p.date_sold>= year+"-01-01");
+      Promise.all([
+        sbGet("projects", `select=${DASH_COLS}&stage=eq.Sold&date_sold=gte.${year}-01-01&date_sold=lte.${year}-12-31&limit=10000`),
+        sbGet("projects", `select=${DASH_COLS}&lead_date=gte.${year-1}-01-01&lead_date=lte.${year-1}-12-31&stage=neq.Lost&stage=neq.Sold&limit=10000`)
+      ]).then(([soldThisYear, priorActive]) => {
+        const soldInCurrent = (soldThisYear||[]).filter(p => !(p.lead_date && p.lead_date >= year+"-01-01" && p.lead_date <= year+"-12-31"));
+        const active = (priorActive||[]).filter(p=>p.stage!=="Sold"&&p.stage!=="Lost");
         const soldRev = soldInCurrent.reduce((s,p)=>s+(parseFloat(p.sale_amount)||0),0);
         if (active.length > 0 || soldInCurrent.length > 0) {
           setCarryover({ total: active.length + soldInCurrent.length, active: active.length, sold: soldInCurrent.length, rev: soldRev, projects: [...active, ...soldInCurrent] });
@@ -1107,6 +1110,12 @@ function Dashboard({ onOpenProject }) {
     </div>;
   }
 
+  var coSold = carryover ? carryover.sold : 0;
+  var coRev = carryover ? carryover.rev : 0;
+  var totalSold = data.sold.length + coSold;
+  var totalRev = data.rev + coRev;
+  var totalAvg = totalSold > 0 ? Math.round(totalRev / totalSold) : 0;
+
   return (<div style={{display:"flex",flexDirection:"column",gap:24}}>
     {/* Year controls */}
     <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
@@ -1122,11 +1131,11 @@ function Dashboard({ onOpenProject }) {
     {/* Metrics row */}
     <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
       {metricCard("Total leads",data.total.toLocaleString(),compData?.total.toLocaleString())}
-      {metricCard("Sold",data.sold.length.toLocaleString(),compData?.sold.length.toLocaleString())}
+      {metricCard("Sold",totalSold.toLocaleString()+(coSold>0?" ("+coSold+" carryover)":""),compData?compData.sold.length.toLocaleString():undefined)}
       {metricCard("Lost",data.lost.length.toLocaleString(),compData?.lost.length.toLocaleString())}
       {metricCard("Estimate $",fmtC(data.estTotal),compData?fmtC(compData.estTotal):undefined)}
-      {metricCard("Revenue",fmtC(data.rev),compData?fmtC(compData.rev):undefined)}
-      {metricCard("Avg sale",fmtC(data.avgSale),compData?fmtC(compData.avgSale):undefined)}
+      {metricCard("Revenue",fmtC(totalRev),compData?fmtC(compData.rev):undefined)}
+      {metricCard("Avg sale",fmtC(totalAvg),compData?fmtC(compData.avgSale):undefined)}
       {metricCard("Close rate",data.closeRate+"%",compData?compData.closeRate+"%":undefined)}
       {metricCard("Est $ capture",data.captureRate+"%",compData?compData.captureRate+"%":undefined)}
       {metricCard("Active leads",data.active.length.toLocaleString(),compData?compData.active.length.toLocaleString():undefined)}
@@ -1134,8 +1143,8 @@ function Dashboard({ onOpenProject }) {
 
     {/* Carryover note */}
     {carryover&&<div style={{background:"#FAEEDA",borderRadius:10,padding:"12px 18px",borderLeft:"4px solid #EF9F27"}}>
-      <div style={{fontSize:13,fontWeight:600,color:"#633806",marginBottom:4}}>Carryover from {year-1}</div>
-      <div style={{fontSize:13,color:"#633806"}}>{carryover.total} leads carried over — {carryover.active} still active, {carryover.sold} sold in {year}{carryover.rev>0?" for "+fmtC(carryover.rev):""}</div>
+      <div style={{fontSize:13,fontWeight:600,color:"#633806",marginBottom:4}}>Carryover into {year}</div>
+      <div style={{fontSize:13,color:"#633806"}}>{carryover.active} prior-year lead{carryover.active===1?"":"s"} still active · {carryover.sold} sale{carryover.sold===1?"":"s"} closed in {year} from earlier leads{carryover.rev>0?" ("+fmtC(carryover.rev)+")":""} — included in Sold & Revenue above</div>
     </div>}
 
     {/* Option A Funnel with integrated deaths */}
@@ -1936,23 +1945,25 @@ function Scorecard({ onOpenProject }) {
   useEffect(() => {
     Promise.all([
       sbGet("goals", `year=eq.${year}`),
-      sbGet("projects", `select=${DASH_COLS}&lead_date=gte.${year}-01-01&lead_date=lte.${year}-12-31&limit=50000`)
-    ]).then(([goalsData, projects]) => {
+      sbGet("projects", `select=${DASH_COLS}&lead_date=gte.${year}-01-01&lead_date=lte.${year}-12-31&limit=50000`),
+      sbGet("projects", `select=${DASH_COLS}&stage=eq.Sold&date_sold=gte.${year}-01-01&date_sold=lte.${year}-12-31&limit=50000`)
+    ]).then(([goalsData, projects, soldProjects]) => {
       const gmap = {};
       (goalsData || []).forEach(g => { gmap[`${g.category}:${g.name}`] = g; });
       setGoals(gmap);
 
       const all = projects || [];
-      const sold = all.filter(p => p.stage === "Sold");
+      const soldY = soldProjects || [];
+      const sold = soldY;
 
       function calc(filterFn) {
         const f = all.filter(filterFn);
-        const s = f.filter(p => p.stage === "Sold");
+        const s = soldY.filter(filterFn);
         return { leads: f.length, sold: s.length, rev: s.reduce((sum, p) => sum + (parseFloat(p.sale_amount) || 0), 0), projects: f };
       }
       function calcMonthly(mi) {
         var monthLeads = all.filter(function(p) { return p.lead_date && p.lead_date.slice(5, 7) === mi; });
-        var monthSold = sold.filter(function(p) { return p.date_sold && p.date_sold.slice(5, 7) === mi; });
+        var monthSold = soldY.filter(function(p) { return p.date_sold && p.date_sold.slice(5, 7) === mi; });
         var monthRev = monthSold.reduce(function(s, p) { return s + (parseFloat(p.sale_amount) || 0); }, 0);
         return { leads: monthLeads.length, sold: monthSold.length, rev: monthRev, projects: monthLeads };
       }
@@ -1977,6 +1988,7 @@ function Scorecard({ onOpenProject }) {
       // Load contacts for drill
       const cids = {};
       all.forEach(p => { if (p.contact_id) cids[p.contact_id] = true; });
+      soldY.forEach(p => { if (p.contact_id) cids[p.contact_id] = true; });
       const idList = Object.keys(cids);
       if (idList.length) {
         const batches = [];
@@ -2158,16 +2170,18 @@ function ManagementConsole({ onOpenProject }) {
   useEffect(function() {
     Promise.all([
       sbGet("projects", "select=id,job_name,stage,project_type,job_location,lead_source,lead_date,sale_amount,estimate_amount,estimate_date,date_sold,date_lost,stage_lost,lost_reason,contact_id,salesperson,buying_behavior,confidence,forecast_amount,forecast_date&lead_date=gte." + curYear + "-01-01&lead_date=lte." + curYear + "-12-31&limit=50000"),
-      sbGet("activity_log", "select=project_id,activity_date&activity_date=gte." + curYear + "-01-01&order=activity_date.desc&limit=50000")
+      sbGet("activity_log", "select=project_id,activity_date&activity_date=gte." + curYear + "-01-01&order=activity_date.desc&limit=50000"),
+      sbGet("projects", "select=id,job_name,stage,project_type,job_location,lead_source,lead_date,sale_amount,estimate_amount,estimate_date,date_sold,date_lost,stage_lost,lost_reason,contact_id,salesperson,buying_behavior,confidence,forecast_amount,forecast_date&stage=eq.Sold&date_sold=gte." + curYear + "-01-01&date_sold=lte." + curYear + "-12-31&limit=50000")
     ]).then(function(res) {
       var projects = res[0] || [];
       var activities = res[1] || [];
+      var soldY = res[2] || [];
 
       // Build activity map: project_id -> latest activity date
       var actMap = {};
       activities.forEach(function(a) { if (a.project_id && (!actMap[a.project_id] || a.activity_date > actMap[a.project_id])) actMap[a.project_id] = a.activity_date; });
 
-      var sold = projects.filter(function(p) { return p.stage === "Sold"; });
+      var sold = soldY;
       var lost = projects.filter(function(p) { return p.stage === "Lost"; });
       var active = projects.filter(function(p) { return p.stage !== "Sold" && p.stage !== "Lost"; });
 
@@ -2178,15 +2192,6 @@ function ManagementConsole({ onOpenProject }) {
         var sp = p.salesperson || "Unassigned";
         if (!spMap[sp]) spMap[sp] = { name: sp, leads: 0, sold: 0, rev: 0, est: 0, pipelineVal: 0, pipelineCount: 0, overdueCount: 0, warningCount: 0, daysToClose: [], lost: 0 };
         spMap[sp].leads++;
-        if (p.stage === "Sold") {
-          spMap[sp].sold++;
-          spMap[sp].rev += parseFloat(p.sale_amount) || 0;
-          if (p.lead_date && p.date_sold) {
-            var d1 = new Date(p.lead_date + "T00:00:00"); var d2 = new Date(p.date_sold + "T00:00:00");
-            var diff = Math.floor((d2 - d1) / 86400000);
-            if (diff >= 0) spMap[sp].daysToClose.push(diff);
-          }
-        }
         if (p.stage === "Lost") spMap[sp].lost++;
         if (p.estimate_amount) spMap[sp].est += parseFloat(p.estimate_amount) || 0;
         if (p.stage !== "Sold" && p.stage !== "Lost" && p.estimate_amount) {
@@ -2202,6 +2207,19 @@ function ManagementConsole({ onOpenProject }) {
             if (daysSince >= thresh.overdue) spMap[sp].overdueCount++;
             else if (daysSince >= thresh.warn) spMap[sp].warningCount++;
           }
+        }
+      });
+
+      // Sold & revenue per rep count by close date (date_sold this year), not lead cohort
+      soldY.forEach(function(p) {
+        var sp = p.salesperson || "Unassigned";
+        if (!spMap[sp]) spMap[sp] = { name: sp, leads: 0, sold: 0, rev: 0, est: 0, pipelineVal: 0, pipelineCount: 0, overdueCount: 0, warningCount: 0, daysToClose: [], lost: 0 };
+        spMap[sp].sold++;
+        spMap[sp].rev += parseFloat(p.sale_amount) || 0;
+        if (p.lead_date && p.date_sold) {
+          var d1 = new Date(p.lead_date + "T00:00:00"); var d2 = new Date(p.date_sold + "T00:00:00");
+          var diff = Math.floor((d2 - d1) / 86400000);
+          if (diff >= 0) spMap[sp].daysToClose.push(diff);
         }
       });
 
@@ -2683,9 +2701,14 @@ function SalesHistory() {
   var curYear = new Date().getFullYear();
 
   useEffect(function() {
-    sbGet("projects", "select=id,stage,lead_date,sale_amount,estimate_amount,date_sold,project_type,job_location&lead_date=gte." + curYear + "-01-01&lead_date=lte." + curYear + "-12-31&limit=50000").then(function(projs) {
-      var all = projs || [];
-      var sold = all.filter(function(p) { return p.stage === "Sold"; });
+    Promise.all([
+      sbGet("projects", "select=id,stage,lead_date,sale_amount,estimate_amount,date_sold,project_type,job_location&lead_date=gte." + curYear + "-01-01&lead_date=lte." + curYear + "-12-31&limit=50000"),
+      sbGet("projects", "select=id,stage,lead_date,sale_amount,estimate_amount,date_sold,project_type,job_location&stage=eq.Sold&date_sold=gte." + curYear + "-01-01&date_sold=lte." + curYear + "-12-31&limit=50000")
+    ]).then(function(res) {
+      var all = res[0] || [];
+      var soldY = res[1] || [];
+      var soldCohort = all.filter(function(p) { return p.stage === "Sold"; });
+      var sold = soldY;
       var rev = sold.reduce(function(s, p) { return s + (parseFloat(p.sale_amount) || 0); }, 0);
       var monthly = {};
       MONTHS.forEach(function(m, i) {
@@ -2721,7 +2744,7 @@ function SalesHistory() {
         var sr = ss.reduce(function(s2, p) { return s2 + (parseFloat(p.sale_amount) || 0); }, 0);
         bySource[s] = [sl.length, ss.length, Math.round(sr)];
       });
-      setLiveData({ leads: all.length, sold: sold.length, rev: Math.round(rev), avg: sold.length > 0 ? Math.round(rev / sold.length) : 0, close: all.length > 0 ? Math.round(sold.length / all.length * 1000) / 10 : 0, estTotal: Math.round(all.filter(function(p){return p.estimate_amount;}).reduce(function(s,p){return s+(parseFloat(p.estimate_amount)||0);},0)), monthly: monthly, byType: byType, byLoc: byLoc, byPrice: byPrice, bySource: bySource });
+      setLiveData({ leads: all.length, sold: sold.length, rev: Math.round(rev), avg: sold.length > 0 ? Math.round(rev / sold.length) : 0, close: all.length > 0 ? Math.round(soldCohort.length / all.length * 1000) / 10 : 0, estTotal: Math.round(all.filter(function(p){return p.estimate_amount;}).reduce(function(s,p){return s+(parseFloat(p.estimate_amount)||0);},0)), monthly: monthly, byType: byType, byLoc: byLoc, byPrice: byPrice, bySource: bySource });
     });
   }, []);
 
@@ -3164,33 +3187,37 @@ function GoalThermometers() {
     Promise.all([
       sbGet("goals", "year=eq." + curYear + "&order=category.asc,name.asc"),
       sbGet("projects", "select=id,stage,lead_date,sale_amount,date_sold&lead_date=gte." + curYear + "-01-01&lead_date=lte." + curYear + "-12-31&limit=50000"),
-      sbGet("projects", "select=id,stage,lead_date,sale_amount,date_sold&lead_date=gte." + (curYear-1) + "-01-01&lead_date=lte." + (curYear-1) + "-12-31&limit=50000")
+      sbGet("projects", "select=id,stage,lead_date,sale_amount,date_sold&lead_date=gte." + (curYear-1) + "-01-01&lead_date=lte." + (curYear-1) + "-12-31&limit=50000"),
+      sbGet("projects", "select=id,stage,lead_date,sale_amount,date_sold&stage=eq.Sold&date_sold=gte." + curYear + "-01-01&date_sold=lte." + curYear + "-12-31&limit=50000"),
+      sbGet("projects", "select=id,stage,lead_date,sale_amount,date_sold&stage=eq.Sold&date_sold=gte." + (curYear-1) + "-01-01&date_sold=lte." + (curYear-1) + "-12-31&limit=50000")
     ]).then(function(res) {
       var goalsData = res[0] || [];
       var projects = res[1] || [];
       var priorProjects = res[2] || [];
+      var soldY = res[3] || [];
+      var priorSoldY = res[4] || [];
       var gmap = {};
       goalsData.forEach(function(g) { gmap[g.category + ":" + g.name] = g; });
       setGoals(gmap);
 
-      // Build monthly actuals for current year
+      // Build monthly actuals for current year (leads by lead_date, sold by close date)
       var md = MONTHS.map(function(m, i) {
         var mi = String(i + 1).padStart(2, "0");
         var monthLeads = projects.filter(function(p) { return p.lead_date && p.lead_date.slice(5, 7) === mi; });
-        var monthSold = projects.filter(function(p) { return p.stage === "Sold" && p.date_sold && p.date_sold.slice(5, 7) === mi; });
+        var monthSold = soldY.filter(function(p) { return p.date_sold && p.date_sold.slice(5, 7) === mi; });
         var monthRev = monthSold.reduce(function(s, p) { return s + (parseFloat(p.sale_amount) || 0); }, 0);
         return { month: m, leads: monthLeads.length, sold: monthSold.length, rev: monthRev };
       });
       setMonthlyData(md);
 
-      // Prior year same-month totals
+      // Prior year same-period totals (leads by lead_date, sold by close date)
       var priorLeads = 0, priorSold = 0, priorRev = 0;
       priorProjects.forEach(function(p) {
         var mIdx = p.lead_date ? parseInt(p.lead_date.slice(5, 7)) - 1 : -1;
         if (mIdx >= 0 && mIdx <= curMonth) priorLeads++;
       });
-      priorProjects.forEach(function(p) {
-        if (p.stage === "Sold" && p.date_sold) {
+      priorSoldY.forEach(function(p) {
+        if (p.date_sold) {
           var mIdx = parseInt(p.date_sold.slice(5, 7)) - 1;
           if (mIdx >= 0 && mIdx <= curMonth) { priorSold++; priorRev += parseFloat(p.sale_amount) || 0; }
         }
@@ -3358,10 +3385,13 @@ function LifeAndDeath({ onOpenProject }) {
     Promise.all([
       sbGet("projects", `select=${DASH_COLS}&lead_date=gte.${year}-01-01&lead_date=lte.${year}-12-31&limit=50000`),
       sbGet("goals", `year=eq.${year}`),
-      sbGet("change_orders", `date_estimated=gte.${year}-01-01&date_estimated=lte.${year}-12-31&limit=10000`)
-    ]).then(([projects, goalsData, changeOrders]) => {
+      sbGet("change_orders", `date_estimated=gte.${year}-01-01&date_estimated=lte.${year}-12-31&limit=10000`),
+      sbGet("projects", `select=${DASH_COLS}&stage=eq.Sold&date_sold=gte.${year}-01-01&date_sold=lte.${year}-12-31&limit=50000`)
+    ]).then(([projects, goalsData, changeOrders, soldProjects]) => {
       const all = projects || [];
-      const sold = all.filter(p => p.stage === "Sold");
+      const soldY = soldProjects || [];
+      const sold = soldY;
+      const carryoverSold = soldY.filter(p => !(p.lead_date && p.lead_date >= year+"-01-01" && p.lead_date <= year+"-12-31")).length;
       const lost = all.filter(p => p.stage === "Lost");
       const active = all.filter(p => p.stage !== "Sold" && p.stage !== "Lost");
 
@@ -3372,6 +3402,7 @@ function LifeAndDeath({ onOpenProject }) {
       // Load contact names
       const cids = {};
       all.forEach(p => { if (p.contact_id) cids[p.contact_id] = true; });
+      soldY.forEach(p => { if (p.contact_id) cids[p.contact_id] = true; });
       const idList = Object.keys(cids);
       const contactPromise = idList.length > 0 ?
         Promise.all(Array.from({ length: Math.ceil(idList.length / 200) }, (_, i) => idList.slice(i * 200, (i + 1) * 200)).map(b => sbGetCached("contacts", `id=in.(${b.join(",")})&select=id,first_name,last_name,home_value`))).then(r => { const m = {}; r.forEach(b => (b || []).forEach(c => { m[c.id] = c; })); return m; }) :
@@ -3387,7 +3418,7 @@ function LifeAndDeath({ onOpenProject }) {
           return { month: m, leads: mAll.length, sold: mSold.length, lost: mLost.length, rev: mSold.reduce((s, p) => s + (parseFloat(p.sale_amount) || 0), 0) };
         });
 
-        setData({ all, sold, lost, active, contacts, monthly, changeOrders: changeOrders || [] });
+        setData({ all, sold, lost, active, contacts, monthly, changeOrders: changeOrders || [], carryoverSold });
       });
     });
   }, [year]);
@@ -3411,7 +3442,7 @@ function LifeAndDeath({ onOpenProject }) {
           {Array.from({ length: curYear - 2025 }, (_, i) => curYear - i).map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <span style={{ fontSize: 13, color: "#8a8780" }}>
-          {data.sold.length} sold · {data.lost.length} lost · {data.active.length} active · {fmtC(data.sold.reduce((s, p) => s + (parseFloat(p.sale_amount) || 0), 0))} revenue{data.changeOrders.length > 0 ? ` · ${data.changeOrders.filter(c => c.status === "Approved").length} change orders (${fmtC(data.changeOrders.filter(c => c.status === "Approved").reduce((s, c) => s + (parseFloat(c.sale_amount) || 0), 0))})` : ""}
+          {data.sold.length} sold{data.carryoverSold > 0 ? ` (${data.carryoverSold} carried over)` : ""} · {data.lost.length} lost · {data.active.length} active · {fmtC(data.sold.reduce((s, p) => s + (parseFloat(p.sale_amount) || 0), 0))} revenue{data.changeOrders.length > 0 ? ` · ${data.changeOrders.filter(c => c.status === "Approved").length} change orders (${fmtC(data.changeOrders.filter(c => c.status === "Approved").reduce((s, c) => s + (parseFloat(c.sale_amount) || 0), 0))})` : ""}
         </span>
       </div>
       <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #e8e6df" }}>
