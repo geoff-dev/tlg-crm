@@ -2007,7 +2007,19 @@ function Scorecard({ onOpenProject }) {
   function getGoal(cat, name) { return goals[`${cat}:${name}`] || { lead_goal: 0, sales_goal: 0, revenue_goal: 0 }; }
 
   function pctBar(actual, goal, color) {
-    if (!goal || goal === 0) return <span style={{ color: "#b0ada6", fontSize: 12 }}>No goal</span>;
+    if (!goal || goal === 0) {
+      if ((actual || 0) > 0) {
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }} title="Results with no target set">
+            <div style={{ flex: 1, height: 14, background: "#f0eeea", borderRadius: 4, overflow: "hidden", minWidth: 60 }}>
+              <div style={{ width: "100%", height: "100%", background: "#3d9e3e", borderRadius: 4 }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#3d9e3e", minWidth: 40, textAlign: "right" }}>100%</span>
+          </div>
+        );
+      }
+      return <span style={{ color: "#b0ada6", fontSize: 12 }}>No goal</span>;
+    }
     const pct = Math.round((actual / goal) * 100);
     const barColor = pct >= 100 ? "#3d9e3e" : pct >= 70 ? color : pct >= 40 ? "#d4841e" : "#c43030";
     return (
