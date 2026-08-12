@@ -5920,7 +5920,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [quickView, setQuickView] = useState(isSales ? "mine" : "all");
-  const [fStage, setFStage] = useState(isSales ? [] : ACTIVE_STAGES.slice());
+  const [fStage, setFStage] = useState([]);
   const [fSalesperson, setFSalesperson] = useState(isSales ? authUser.name : "");
   const [fType, setFType] = useState([]);
   const [fLoc, setFLoc] = useState([]);
@@ -6019,7 +6019,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const clearFilters = () => { setSearch(""); setQuickView("active"); setFStage(ACTIVE_STAGES.slice()); setFType([]); setFLoc([]); setDateFrom(""); setDateTo(""); setFSalesperson(""); setPage(0); };
   var applyQuickView = function(view) {
     setQuickView(view);
-    setSearch(""); setFType([]); setFLoc([]); setDateFrom(""); setDateTo(""); setPage(0);
+    setFType([]); setFLoc([]); setDateFrom(""); setDateTo(""); setPage(0);
     setFSalesperson(view === "mine" ? authUser.name : "");
     if (view === "mine") { setFStage([]); setSortCol("lead_date"); setSortDir("desc"); }
     else if (view === "sold") { setFStage(["Sold"]); setSortCol("date_sold"); setSortDir("desc"); }
