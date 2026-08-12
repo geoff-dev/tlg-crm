@@ -556,6 +556,147 @@ function ActivityLog({ activities, projectId, contactId, onAdd, defaultAuthor })
 }
 
 /* ── Project Detail ── */
+/* ── Lead Sheet (printable one-pager) ── */
+const TLG_LOGO_SVG = `<svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 160 42">
+<path fill="#243F81" d="M 91.40625 48.117188 L 91.40625 51.019531 L 81.90625 51.019531 L 81.90625 37.339844 L 85.148438 37.339844 L 85.148438 48.117188 Z"/>
+<path fill="#243F81" d="M 92.601562 37.4375 L 95.460938 37.4375 L 95.460938 39.972656 L 92.601562 39.972656 Z M 92.523438 41.105469 L 95.519531 41.105469 L 95.519531 51.019531 L 92.523438 51.019531 Z"/>
+<path fill="#243F81" d="M 101.085938 40.625 L 101.085938 41.105469 L 103.042969 41.105469 L 103.042969 43.296875 L 101.085938 43.296875 L 101.085938 51.019531 L 98.089844 51.019531 L 98.089844 43.296875 L 96.613281 43.296875 L 96.613281 41.105469 L 98.089844 41.105469 L 98.089844 40.53125 C 98.089844 38.78125 99.011719 37.261719 101.660156 37.261719 C 102.121094 37.261719 102.660156 37.300781 103.082031 37.339844 L 103.082031 39.570312 L 102.273438 39.570312 C 101.429688 39.570312 101.085938 39.953125 101.085938 40.625"/>
+<path fill="#243F81" d="M 106.367188 45.042969 L 110.742188 45.042969 C 110.53125 43.816406 109.746094 43.085938 108.535156 43.085938 C 107.441406 43.085938 106.597656 43.660156 106.367188 45.042969 M 113.679688 46.945312 L 106.347656 46.945312 C 106.558594 48.367188 107.441406 49.039062 108.613281 49.039062 C 109.609375 49.039062 110.261719 48.636719 110.609375 47.925781 L 113.449219 47.925781 C 112.914062 50.019531 110.992188 51.25 108.613281 51.25 C 105.542969 51.25 103.46875 49.214844 103.46875 46.0625 C 103.46875 42.929688 105.484375 40.875 108.574219 40.875 C 111.664062 40.875 113.679688 43.007812 113.679688 46.351562 Z"/>
+<path fill="#243F81" d="M 114.527344 47.714844 L 117.90625 47.714844 L 117.90625 51.019531 L 114.527344 51.019531 Z"/>
+<path fill="#3974B7" d="M 118.921875 46.523438 L 122.070312 46.523438 C 122.109375 48.386719 123.339844 48.789062 125.027344 48.789062 C 126.5625 48.789062 127.351562 48.230469 127.351562 47.214844 C 127.351562 46.292969 126.773438 45.925781 124.894531 45.582031 L 123.78125 45.371094 C 120.902344 44.871094 119.210938 43.566406 119.210938 41.085938 C 119.210938 38.761719 120.976562 37.035156 124.546875 37.035156 C 128.273438 37.035156 130.132812 38.683594 130.25 41.492188 L 127.179688 41.492188 C 127.101562 40.222656 126.429688 39.570312 124.605469 39.570312 C 123.183594 39.570312 122.511719 40.085938 122.511719 40.953125 C 122.511719 41.914062 123.148438 42.296875 124.835938 42.625 L 125.988281 42.835938 C 129.269531 43.429688 130.710938 44.679688 130.710938 47.003906 C 130.710938 49.886719 128.40625 51.328125 124.910156 51.328125 C 121.015625 51.328125 118.941406 49.480469 118.921875 46.523438"/>
+<path fill="#3974B7" d="M 135.53125 43.296875 L 135.53125 47.925781 C 135.53125 48.65625 135.894531 48.789062 136.664062 48.789062 L 137.429688 48.789062 L 137.429688 51.019531 C 136.96875 51.074219 136.492188 51.09375 136.050781 51.09375 C 133.574219 51.09375 132.535156 50.289062 132.535156 48.25 L 132.535156 43.296875 L 131.058594 43.296875 L 131.058594 41.105469 L 132.535156 41.105469 L 132.535156 38.167969 L 135.53125 38.167969 L 135.53125 41.105469 L 137.429688 41.105469 L 137.429688 43.296875 Z"/>
+<path fill="#3974B7" d="M 148.394531 41.105469 L 144.804688 51.402344 C 143.941406 53.898438 142.808594 54.804688 139.871094 54.804688 C 139.292969 54.804688 139.003906 54.785156 138.699219 54.765625 L 138.699219 52.460938 L 139.660156 52.460938 C 140.773438 52.460938 141.15625 51.824219 141.15625 51.074219 C 141.15625 50.519531 140.925781 49.808594 140.695312 49.15625 L 137.855469 41.105469 L 141.078125 41.105469 L 141.519531 42.507812 C 142.097656 44.449219 142.671875 46.484375 143.210938 48.75 C 143.746094 46.464844 144.304688 44.449219 144.859375 42.527344 L 145.300781 41.105469 Z"/>
+<path fill="#3974B7" d="M 148.84375 37.339844 L 151.839844 37.339844 L 151.839844 51.019531 L 148.84375 51.019531 Z"/>
+<path fill="#3974B7" d="M 155.648438 45.042969 L 160.027344 45.042969 C 159.816406 43.816406 159.027344 43.085938 157.820312 43.085938 C 156.726562 43.085938 155.878906 43.660156 155.648438 45.042969 M 162.960938 46.945312 L 155.628906 46.945312 C 155.839844 48.367188 156.726562 49.039062 157.894531 49.039062 C 158.894531 49.039062 159.546875 48.636719 159.890625 47.925781 L 162.734375 47.925781 C 162.195312 50.019531 160.277344 51.25 157.894531 51.25 C 154.824219 51.25 152.75 49.214844 152.75 46.0625 C 152.75 42.929688 154.765625 40.875 157.855469 40.875 C 160.949219 40.875 162.960938 43.007812 162.960938 46.351562 Z"/>
+<path fill="#3974B7" d="M 163.808594 47.714844 L 167.1875 47.714844 L 167.1875 51.019531 L 163.808594 51.019531 Z"/>
+<path fill="#00AAE9" d="M 85.148438 57.640625 L 85.148438 60.117188 L 91.695312 60.117188 L 91.695312 62.847656 L 85.148438 62.847656 L 85.148438 65.515625 L 92.328125 65.515625 L 92.328125 68.417969 L 81.90625 68.417969 L 81.90625 54.738281 L 92.347656 54.738281 L 92.347656 57.640625 Z"/>
+<path fill="#00AAE9" d="M 103.40625 68.417969 L 100.007812 68.417969 L 99.761719 68.054688 C 99.183594 67.226562 98.648438 66.382812 98.109375 65.554688 C 97.570312 66.382812 97.015625 67.226562 96.4375 68.054688 L 96.191406 68.417969 L 92.847656 68.417969 L 96.496094 63.347656 L 93.042969 58.503906 L 96.457031 58.503906 L 96.824219 59.023438 C 97.285156 59.714844 97.746094 60.40625 98.183594 61.097656 C 98.609375 60.40625 99.070312 59.695312 99.53125 59.023438 L 99.894531 58.503906 L 103.214844 58.503906 L 99.796875 63.308594 Z"/>
+<path fill="#00AAE9" d="M 111.117188 63.386719 C 111.117188 61.503906 110.328125 60.675781 109.003906 60.675781 C 107.660156 60.675781 106.875 61.578125 106.875 63.460938 C 106.875 65.34375 107.660156 66.246094 109.003906 66.246094 C 110.328125 66.246094 111.117188 65.269531 111.117188 63.386719 M 114.148438 63.460938 C 114.148438 66.613281 112.515625 68.648438 109.828125 68.648438 C 108.484375 68.648438 107.546875 68.109375 106.910156 67.207031 L 106.910156 72.183594 L 103.917969 72.183594 L 103.917969 58.507812 L 106.835938 58.507812 L 106.835938 59.832031 C 107.46875 58.871094 108.429688 58.273438 109.828125 58.273438 C 112.515625 58.273438 114.148438 60.3125 114.148438 63.460938"/>
+<path fill="#00AAE9" d="M 117.933594 62.445312 L 122.308594 62.445312 C 122.097656 61.214844 121.3125 60.484375 120.101562 60.484375 C 119.007812 60.484375 118.164062 61.0625 117.933594 62.445312 M 125.246094 64.347656 L 117.914062 64.347656 C 118.125 65.769531 119.007812 66.441406 120.179688 66.441406 C 121.175781 66.441406 121.828125 66.035156 122.175781 65.324219 L 125.015625 65.324219 C 124.480469 67.417969 122.558594 68.648438 120.179688 68.648438 C 117.109375 68.648438 115.035156 66.613281 115.035156 63.460938 C 115.035156 60.332031 117.050781 58.277344 120.140625 58.277344 C 123.230469 58.277344 125.246094 60.40625 125.246094 63.75 Z"/>
+<path fill="#00AAE9" d="M 132.671875 58.390625 L 132.671875 61.117188 L 131.902344 61.117188 C 130.234375 61.117188 129.273438 61.945312 129.273438 63.808594 L 129.273438 68.417969 L 126.277344 68.417969 L 126.277344 58.503906 L 129.195312 58.503906 L 129.195312 60.347656 C 129.617188 59.121094 130.539062 58.351562 132.019531 58.351562 C 132.25 58.351562 132.460938 58.371094 132.671875 58.390625"/>
+<path fill="#00AAE9" d="M 133.839844 54.835938 L 136.699219 54.835938 L 136.699219 57.371094 L 133.839844 57.371094 Z M 133.765625 58.507812 L 136.757812 58.507812 L 136.757812 68.417969 L 133.765625 68.417969 Z"/>
+<path fill="#00AAE9" d="M 140.75 62.445312 L 145.128906 62.445312 C 144.917969 61.214844 144.128906 60.484375 142.921875 60.484375 C 141.828125 60.484375 140.980469 61.0625 140.75 62.445312 M 148.066406 64.347656 L 140.730469 64.347656 C 140.941406 65.769531 141.828125 66.441406 142.996094 66.441406 C 143.996094 66.441406 144.648438 66.035156 144.992188 65.324219 L 147.835938 65.324219 C 147.296875 67.417969 145.378906 68.648438 142.996094 68.648438 C 139.925781 68.648438 137.855469 66.613281 137.855469 63.460938 C 137.855469 60.332031 139.867188 58.277344 142.957031 58.277344 C 146.050781 58.277344 148.066406 60.40625 148.066406 63.75 Z"/>
+<path fill="#00AAE9" d="M 158.933594 61.925781 L 158.933594 68.417969 L 155.9375 68.417969 L 155.9375 62.519531 C 155.9375 61.425781 155.457031 60.832031 154.34375 60.832031 C 153.421875 60.832031 152.464844 61.425781 152.464844 62.886719 L 152.464844 68.417969 L 149.46875 68.417969 L 149.46875 58.507812 L 152.386719 58.507812 L 152.386719 59.910156 C 153.039062 58.984375 154.054688 58.273438 155.496094 58.273438 C 157.453125 58.273438 158.933594 59.464844 158.933594 61.925781"/>
+<path fill="#00AAE9" d="M 160.078125 63.460938 C 160.078125 60.3125 162.058594 58.273438 165.167969 58.273438 C 167.890625 58.273438 169.734375 59.792969 170.003906 62.234375 L 167.027344 62.234375 C 166.855469 61.175781 166.125 60.714844 165.167969 60.714844 C 163.898438 60.714844 163.113281 61.558594 163.113281 63.460938 C 163.113281 65.363281 163.917969 66.191406 165.167969 66.191406 C 166.164062 66.191406 166.953125 65.691406 167.085938 64.519531 L 170.0625 64.519531 C 169.851562 67.074219 167.910156 68.648438 165.167969 68.648438 C 162.074219 68.648438 160.078125 66.613281 160.078125 63.460938"/>
+<path fill="#00AAE9" d="M 173.769531 62.445312 L 178.144531 62.445312 C 177.933594 61.214844 177.144531 60.484375 175.9375 60.484375 C 174.84375 60.484375 174 61.0625 173.769531 62.445312 M 181.082031 64.347656 L 173.75 64.347656 C 173.960938 65.769531 174.84375 66.441406 176.015625 66.441406 C 177.011719 66.441406 177.664062 66.035156 178.011719 65.324219 L 180.851562 65.324219 C 180.3125 67.417969 178.394531 68.648438 176.015625 68.648438 C 172.945312 68.648438 170.871094 66.613281 170.871094 63.460938 C 170.871094 60.332031 172.886719 58.277344 175.976562 58.277344 C 179.066406 58.277344 181.082031 60.40625 181.082031 63.75 Z"/>
+<path fill="#00AAE9" d="M 181.929688 65.113281 L 185.308594 65.113281 L 185.308594 68.417969 L 181.929688 68.417969 Z"/>
+<path fill="#243F81" d="M 51.855469 34.214844 L 34.570312 45.972656 L 39.777344 45.972656 L 51.855469 37.757812 L 63.933594 45.972656 L 69.140625 45.972656 Z"/>
+<path fill="#00AAE9" d="M 60.085938 49.679688 L 69.140625 49.679688 L 69.140625 68.429688 L 60.085938 68.429688 Z"/>
+<path fill="#3974B7" d="M 47.328125 49.679688 L 56.382812 49.679688 L 56.382812 68.429688 L 47.328125 68.429688 Z"/>
+<path fill="#243F81" d="M 34.570312 49.679688 L 43.625 49.679688 L 43.625 68.429688 L 34.570312 68.429688 Z"/>
+      </svg>`;
+function leadSheetEsc(s){ return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function buildLeadSheetHTML(form, contact, activities){
+  var c = contact || {}; var E = leadSheetEsc; var f = form || {};
+  var clientName = ((c.first_name||"")+" "+(c.last_name||"")).trim() || "—";
+  var cell = c.phone_cell ? fmtPhone(c.phone_cell) : (c.phone_home ? fmtPhone(c.phone_home) : "—");
+  var email = c.email || "—";
+  var spouseName = ((c.spouse_name||"")+" "+(c.spouse_last_name||"")).trim() || "—";
+  var spouseCell = c.spouse_phone ? fmtPhone(c.spouse_phone) : "—";
+  var spouseEmail = c.spouse_email || "—";
+  var addr = c.address ? (c.address+", "+(c.city||"")+" "+(c.state||"")+" "+(c.zip||"")).replace(/\s+/g," ").trim() : "—";
+  var cross = c.cross_streets || "—";
+  var subd = c.subdivision || "—";
+  var area = f.job_location || c.location || "—";
+  var hv = c.home_value ? fmtC(c.home_value) : "—";
+  var jobName = f.job_name || "—";
+  var sp = f.salesperson || "—";
+  var leadDate = f.lead_date ? fmtD(f.lead_date) : "—";
+  var ptype = f.project_type || "—";
+  var lsource = f.lead_source || "—";
+  var acts = (activities||[]).filter(function(a){return a.activity_text;}).slice().reverse();
+  if (acts.length > 8) acts = acts.slice(acts.length-8);
+  var actHTML = acts.map(function(a){
+    var d = a.activity_date ? fmtD(a.activity_date) : "";
+    var t = a.activity_type || "Note";
+    return '<div class="entry"><span class="d">'+E(d)+' — '+E(t)+'.</span> '+E(a.activity_text)+'</div>';
+  }).join("");
+  if (!actHTML) actHTML = '<div class="entry" style="color:#8896A8">No activity logged yet.</div>';
+  var bub = function(txt){ return '<div class="vopt"><div class="bub"></div><div class="txt">'+txt+'</div></div>'; };
+  var buying = ['<b>1</b> · Basic / Functional','<b>1.5</b> · Between Basic &amp; Nice','<b>2</b> · Nice, Not Crazy','<b>2.5</b> · Between Nice &amp; Luxury','<b>3</b> · Do It Once, Do It Right'].map(bub).join("");
+  var yrs = ['0–2','2–3','4–5','5–10','10+','Forever'].map(bub).join("");
+  var noteLines = ""; for (var i=0;i<14;i++) noteLines += '<div class="nl"></div>';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Lead Sheet — ${E(jobName)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+@page{ size:letter; margin:0.4in; }
+*{ margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+:root{ --life:#243F81; --style:#3974B7; --ink:#0A1628; --ink2:#3B4A5E; --ink3:#8896A8; --rule:#E2E6ED; --soft:#F1F4F9; --bub:#AEB8C6; }
+html,body{ font-family:'Manrope',sans-serif; color:var(--ink); background:#fff; }
+.page{ width:100%; }
+.hdr{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid var(--life); padding-bottom:10px; margin-bottom:10px; }
+.brand-logo{ height:34px; width:auto; }
+.hdr-right{ text-align:right; }
+.eyebrow{ font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--style); }
+.sheet-title{ font-size:20px; font-weight:800; color:var(--life); line-height:1; margin-top:2px; }
+.hdr-meta{ font-size:9px; color:var(--ink3); margin-top:4px; }
+.strip{ display:grid; grid-template-columns:repeat(5,1fr); gap:7px; margin-bottom:8px; }
+.strip .cell{ background:var(--soft); border-radius:6px; padding:7px 9px; }
+.strip .lbl{ font-size:8px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--style); margin-bottom:2px; }
+.strip .val{ font-size:11.5px; font-weight:700; color:var(--ink); line-height:1.2; }
+.sec-h{ font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--life); border-bottom:1px solid var(--rule); padding-bottom:3px; margin:20px 0 9px; }
+.topcols{ display:grid; grid-template-columns:1fr 1fr; gap:0 24px; align-items:start; }
+.topcols .sec-h{ margin-top:0; }
+.f{ display:flex; flex-direction:column; padding:2px 0; border-bottom:1px dotted var(--rule); }
+.f .k{ font-size:8px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); }
+.f .v{ font-size:12px; font-weight:600; color:var(--ink); min-height:15px; padding-top:1px; }
+.act{ font-size:11px; color:var(--ink2); line-height:1.5; }
+.act .entry{ padding:3px 0; border-bottom:1px dotted var(--rule); }
+.act .d{ font-weight:700; color:var(--style); }
+.qual{ display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:0 22px; }
+.qcol .qh{ font-size:10px; font-weight:800; color:var(--ink2); margin-bottom:6px; }
+.qcol .qh span{ display:block; font-size:8px; font-weight:500; color:var(--ink3); margin-top:1px; }
+.vopt{ display:flex; align-items:center; gap:9px; padding:4px 0; }
+.bub{ width:14px; height:14px; border:1.6px solid var(--bub); border-radius:50%; flex-shrink:0; }
+.vopt .txt{ font-size:11px; font-weight:600; color:var(--ink2); }
+.vopt .txt b{ color:var(--life); }
+.nl{ border-bottom:1px solid var(--rule); height:19px; }
+.footer{ margin-top:12px; padding-top:8px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; font-size:8px; color:var(--ink3); }
+</style></head><body><div class="page">
+  <div class="hdr"><div>${TLG_LOGO_SVG}</div>
+    <div class="hdr-right"><div class="eyebrow">Lead Opportunity</div><div class="sheet-title">Lead Sheet</div>
+    <div class="hdr-meta">The Lifestyle Group &nbsp;·&nbsp; (317) 352-9022 &nbsp;·&nbsp; lifestylegroup.com</div></div>
+  </div>
+  <div class="strip">
+    <div class="cell"><div class="lbl">Project / Job</div><div class="val">${E(jobName)}</div></div>
+    <div class="cell"><div class="lbl">Salesperson</div><div class="val">${E(sp)}</div></div>
+    <div class="cell"><div class="lbl">Date of Lead</div><div class="val">${E(leadDate)}</div></div>
+    <div class="cell"><div class="lbl">Project Type</div><div class="val">${E(ptype)}</div></div>
+    <div class="cell"><div class="lbl">Lead Source</div><div class="val">${E(lsource)}</div></div>
+  </div>
+  <div class="topcols">
+    <div class="col"><div class="sec-h">Client &amp; Contact</div>
+      <div class="f"><span class="k">Client Name</span><span class="v">${E(clientName)}</span></div>
+      <div class="f"><span class="k">Cell Phone</span><span class="v">${E(cell)}</span></div>
+      <div class="f"><span class="k">Email</span><span class="v">${E(email)}</span></div>
+      <div class="f"><span class="k">Spouse / Partner Name</span><span class="v">${E(spouseName)}</span></div>
+      <div class="f"><span class="k">Partner Cell Phone</span><span class="v">${E(spouseCell)}</span></div>
+      <div class="f"><span class="k">Partner Email</span><span class="v">${E(spouseEmail)}</span></div>
+    </div>
+    <div class="col"><div class="sec-h">Property</div>
+      <div class="f"><span class="k">Address</span><span class="v">${E(addr)}</span></div>
+      <div class="f"><span class="k">Closest Cross Streets</span><span class="v">${E(cross)}</span></div>
+      <div class="f"><span class="k">Subdivision</span><span class="v">${E(subd)}</span></div>
+      <div class="f"><span class="k">County / Area</span><span class="v">${E(area)}</span></div>
+      <div class="f"><span class="k">Home Value</span><span class="v">${E(hv)}</span></div>
+    </div>
+  </div>
+  <div class="sec-h">Activity Notes</div>
+  <div class="act">${actHTML}</div>
+  <div class="sec-h">Qualifying &mdash; circle one in each</div>
+  <div class="qual">
+    <div class="qcol"><div class="qh">Buying Behavior<span>how they want to invest</span></div>${buying}</div>
+    <div class="qcol"><div class="qh">Years in the Home<span>&nbsp;</span></div>${yrs}</div>
+    <div class="qcol"><div class="qh">Years Plan to Stay<span>&nbsp;</span></div>${yrs}</div>
+  </div>
+  <div class="sec-h">Notes</div>
+  <div class="notes-area">${noteLines}</div>
+  <div class="footer"><span>The Lifestyle Group, Inc. &nbsp;·&nbsp; 6230 Southeastern Avenue, Indianapolis, IN 46203</span><span>Lead Sheet</span></div>
+</div>
+<script>function dp(){try{window.focus();window.print();}catch(e){}}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(dp,200);});}else{window.onload=function(){setTimeout(dp,500);};}<\/script>
+</body></html>`;
+}
+
 function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isProduction }) {
   const [contact, setContact] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -592,6 +733,15 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
     if (newForecast !== origForecast) { updateData.forecast_updated = new Date().toISOString(); }
     sbUpdate("projects", project.id, updateData).then(() => { setSaving(false); if(onSaved) onSaved(); });
   };
+
+  function printLeadSheet(e){
+    if (e) e.stopPropagation();
+    var w = window.open("", "_blank");
+    if (!w){ alert("Please allow pop-ups for this site to print the lead sheet."); return; }
+    w.document.open();
+    w.document.write(buildLeadSheetHTML(form, contact, activities));
+    w.document.close();
+  }
 
   if (loading) return <div style={{padding:20,color:"#8a8780"}}>Loading project...</div>;
 
@@ -636,6 +786,7 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
         {contact.subdivision&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Subdivision</span><br/>{contact.subdivision}</div>}
         {contact.cross_streets&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Cross streets</span><br/>{contact.cross_streets}</div>}
         {contact.home_value&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Home value</span><br/>{fmtC(contact.home_value)}</div>}
+        <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={printLeadSheet} style={{padding:"6px 14px",borderRadius:6,border:"none",background:"#185FA5",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨 Print Lead Sheet</button></div>
       </div>{(contact.spouse_name||contact.spouse_last_name||contact.spouse_email||contact.spouse_phone)&&<div style={{marginTop:12}}><div style={{fontSize:12,fontWeight:600,color:"#8a8780",marginBottom:4}}>Additional Contact</div><div style={{display:"flex",flexWrap:"wrap",gap:20,fontSize:14}}>
         {(contact.spouse_name||contact.spouse_last_name)&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Name</span><br/>{((contact.spouse_name||"")+" "+(contact.spouse_last_name||"")).trim()}</div>}
         {contact.spouse_email&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Email</span><br/>{contact.spouse_email}</div>}
