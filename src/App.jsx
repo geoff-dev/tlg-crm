@@ -615,7 +615,7 @@ function buildLeadSheetHTML(form, contact, activities){
   var bub = function(txt){ return '<div class="vopt"><div class="bub"></div><div class="txt">'+txt+'</div></div>'; };
   var buying = ['<b>1</b> · Basic / Functional','<b>1.5</b> · Between Basic &amp; Nice','<b>2</b> · Nice, Not Crazy','<b>2.5</b> · Between Nice &amp; Luxury','<b>3</b> · Do It Once, Do It Right'].map(bub).join("");
   var yrs = ['0–2','2–3','4–5','5–10','10+','Forever'].map(bub).join("");
-  var noteLines = ""; for (var i=0;i<14;i++) noteLines += '<div class="nl"></div>';
+  var noteLines = "";
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Lead Sheet — ${E(jobName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -623,7 +623,7 @@ function buildLeadSheetHTML(form, contact, activities){
 *{ margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 :root{ --life:#243F81; --style:#3974B7; --ink:#0A1628; --ink2:#3B4A5E; --ink3:#8896A8; --rule:#E2E6ED; --soft:#F1F4F9; --bub:#AEB8C6; }
 html,body{ font-family:'Manrope',sans-serif; color:var(--ink); background:#fff; }
-.page{ width:100%; }
+.page{ width:100%; height:10.1in; display:flex; flex-direction:column; overflow:hidden; }
 .hdr{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid var(--life); padding-bottom:10px; margin-bottom:10px; }
 .brand-logo{ height:34px; width:auto; }
 .hdr-right{ text-align:right; }
@@ -650,8 +650,8 @@ html,body{ font-family:'Manrope',sans-serif; color:var(--ink); background:#fff; 
 .bub{ width:14px; height:14px; border:1.6px solid var(--bub); border-radius:50%; flex-shrink:0; }
 .vopt .txt{ font-size:11px; font-weight:600; color:var(--ink2); }
 .vopt .txt b{ color:var(--life); }
-.nl{ border-bottom:1px solid var(--rule); height:19px; }
-.footer{ margin-top:12px; padding-top:8px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; font-size:8px; color:var(--ink3); }
+.notes-area{ flex:1 1 auto; min-height:0; background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 23px, var(--rule) 23px, var(--rule) 24px); }
+.footer{ margin-top:6px; padding-top:8px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; font-size:8px; color:var(--ink3); }
 </style></head><body><div class="page">
   <div class="hdr"><div>${TLG_LOGO_SVG}</div>
     <div class="hdr-right"><div class="eyebrow">Lead Opportunity</div><div class="sheet-title">Lead Sheet</div>
