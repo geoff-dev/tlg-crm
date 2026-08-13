@@ -612,9 +612,6 @@ function buildLeadSheetHTML(form, contact, activities){
     return '<div class="entry"><span class="d">'+E(d)+' — '+E(t)+'.</span> '+E(a.activity_text)+'</div>';
   }).join("");
   if (!actHTML) actHTML = '<div class="entry" style="color:#8896A8">No activity logged yet.</div>';
-  var bub = function(txt){ return '<div class="vopt"><div class="bub"></div><div class="txt">'+txt+'</div></div>'; };
-  var buying = ['<b>1</b> · Basic / Functional','<b>1.5</b> · Between Basic &amp; Nice','<b>2</b> · Nice, Not Crazy','<b>2.5</b> · Between Nice &amp; Luxury','<b>3</b> · Do It Once, Do It Right'].map(bub).join("");
-  var yrs = ['0–2','2–3','4–5','5–10','10+','Forever'].map(bub).join("");
   var noteLines = "";
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Lead Sheet — ${E(jobName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -643,13 +640,11 @@ html,body{ font-family:'Manrope',sans-serif; color:var(--ink); background:#fff; 
 .act{ font-size:11px; color:var(--ink2); line-height:1.5; }
 .act .entry{ padding:3px 0; border-bottom:1px dotted var(--rule); }
 .act .d{ font-weight:700; color:var(--style); }
-.qual{ display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:0 22px; }
-.qcol .qh{ font-size:10px; font-weight:800; color:var(--ink2); margin-bottom:6px; }
-.qcol .qh span{ display:block; font-size:8px; font-weight:500; color:var(--ink3); margin-top:1px; }
-.vopt{ display:flex; align-items:center; gap:9px; padding:4px 0; }
-.bub{ width:14px; height:14px; border:1.6px solid var(--bub); border-radius:50%; flex-shrink:0; }
-.vopt .txt{ font-size:11px; font-weight:600; color:var(--ink2); }
-.vopt .txt b{ color:var(--life); }
+.qbox-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+.qbox{ background:var(--soft); border-radius:6px; padding:9px 11px; display:flex; align-items:center; gap:9px; }
+.qlbl{ font-size:8px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--style); white-space:nowrap; }
+.qlbl .qhint{ color:var(--ink3); font-weight:500; letter-spacing:0; text-transform:none; }
+.qfill{ flex:1 1 auto; border-bottom:1px solid var(--bub); height:15px; }
 .notes-area{ flex:1 1 auto; min-height:0; background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 23px, var(--rule) 23px, var(--rule) 24px); }
 .footer{ margin-top:6px; padding-top:8px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; font-size:8px; color:var(--ink3); }
 </style></head><body><div class="page">
@@ -683,11 +678,11 @@ html,body{ font-family:'Manrope',sans-serif; color:var(--ink); background:#fff; 
   </div>
   <div class="sec-h">Activity Notes</div>
   <div class="act">${actHTML}</div>
-  <div class="sec-h">Qualifying &mdash; circle one in each</div>
-  <div class="qual">
-    <div class="qcol"><div class="qh">Buying Behavior<span>how they want to invest</span></div>${buying}</div>
-    <div class="qcol"><div class="qh">Years in the Home<span>&nbsp;</span></div>${yrs}</div>
-    <div class="qcol"><div class="qh">Years Plan to Stay<span>&nbsp;</span></div>${yrs}</div>
+  <div class="sec-h">Qualifying</div>
+  <div class="qbox-row">
+    <div class="qbox"><div class="qlbl">Buying Behavior <span class="qhint">1 &ndash; 3</span></div><div class="qfill"></div></div>
+    <div class="qbox"><div class="qlbl">Years in the Home <span class="qhint"># yrs</span></div><div class="qfill"></div></div>
+    <div class="qbox"><div class="qlbl">Years Plan to Stay <span class="qhint"># yrs</span></div><div class="qfill"></div></div>
   </div>
   <div class="sec-h">Notes</div>
   <div class="notes-area">${noteLines}</div>
@@ -786,7 +781,7 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
         {contact.subdivision&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Subdivision</span><br/>{contact.subdivision}</div>}
         {contact.cross_streets&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Cross streets</span><br/>{contact.cross_streets}</div>}
         {contact.home_value&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Home value</span><br/>{fmtC(contact.home_value)}</div>}
-        <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={printLeadSheet} style={{padding:"6px 14px",borderRadius:6,border:"none",background:"#185FA5",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨 Print Lead Sheet</button></div>
+        <div style={{display:"flex",alignItems:"flex-end",marginLeft:24}}><button onClick={printLeadSheet} style={{padding:"6px 14px",borderRadius:6,border:"none",background:"#185FA5",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨 Print Lead Sheet</button></div>
       </div>{(contact.spouse_name||contact.spouse_last_name||contact.spouse_email||contact.spouse_phone)&&<div style={{marginTop:12}}><div style={{fontSize:12,fontWeight:600,color:"#8a8780",marginBottom:4}}>Additional Contact</div><div style={{display:"flex",flexWrap:"wrap",gap:20,fontSize:14}}>
         {(contact.spouse_name||contact.spouse_last_name)&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Name</span><br/>{((contact.spouse_name||"")+" "+(contact.spouse_last_name||"")).trim()}</div>}
         {contact.spouse_email&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Email</span><br/>{contact.spouse_email}</div>}
