@@ -607,7 +607,7 @@ function buildLeadSheetHTML(form, contact, activities){
   var acts = (activities||[]).filter(function(a){return a.activity_text;}).slice().reverse();
   if (acts.length > 8) acts = acts.slice(acts.length-8);
   var actHTML = acts.map(function(a){
-    var d = a.activity_date ? fmtD(a.activity_date) : "";
+    var d = a.activity_date ? fmtTS(a.activity_date) : "";
     var t = a.activity_type || "Note";
     return '<div class="entry"><span class="d">'+E(d)+' — '+E(t)+'.</span> '+E(a.activity_text)+'</div>';
   }).join("");
@@ -4184,7 +4184,7 @@ function OrderDashboard({ onOpenProject }) {
   var [filterVendor, setFilterVendor] = useState("");
   var [sortBy, setSortBy] = useState("arrival");
 
-  var PHASES = ["Site Prep","Demo","Framing","Windows & Doors","Plumbing","Electrical","HVAC","Insulation","Drywall","Cabinetry","Cabinet Hardware","Countertops","Backsplash","Finish Carpentry","Flooring","Paint","Other"];
+  var PHASES = ["Site Prep","Demo","Framing","Windows & Doors","Plumbing","Electrical","HVAC","Insulation","Drywall","Cabinetry","Cabinet Hardware","Countertops","Backsplash","Finish Carpentry","Flooring","Paint","Appliances","Other"];
   var STATUSES = ["Ordered","Shipped","Back-Ordered","Received","Installed","Issue"];
   var statusColor = function(s) {
     if (s==="Ordered") return {bg:"#E6F1FB",color:"#0C447C"};
@@ -4333,7 +4333,7 @@ function OrderTracker({ projectId, contactId }) {
   var [form, setForm] = useState({});
   var [saving, setSaving] = useState(false);
 
-  var PHASES = ["Site Prep","Demo","Framing","Windows & Doors","Plumbing","Electrical","HVAC","Insulation","Drywall","Cabinetry","Cabinet Hardware","Countertops","Backsplash","Finish Carpentry","Flooring","Paint","Other"];
+  var PHASES = ["Site Prep","Demo","Framing","Windows & Doors","Plumbing","Electrical","HVAC","Insulation","Drywall","Cabinetry","Cabinet Hardware","Countertops","Backsplash","Finish Carpentry","Flooring","Paint","Appliances","Other"];
   var STATUSES = ["Ordered","Shipped","Back-Ordered","Received","Installed","Issue"];
   var statusColor = function(s) {
     if (s==="Ordered") return {bg:"#E6F1FB",color:"#0C447C"};
@@ -6307,7 +6307,8 @@ function AuthenticatedApp({ authUser, onLogout }) {
           {id:"sops",label:"SOPs",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;},roles:["Owner","Admin","Sales"]},
-          {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/",roles:["Owner","Admin","Sales","Production"]}
+          {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/",roles:["Owner","Admin","Sales","Production"]},
+          {id:"_builderstds",label:"Builder Standards",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>;},external:"/builder-standards.pdf",roles:["Owner","Admin","Sales","Production"]}
         ].filter(function(item){return !item.roles||item.roles.indexOf(effectiveRole)>=0;}).sort(function(a,b){if(effectiveRole==="Production"){if(a.id==="_production")return -1;if(b.id==="_production")return 1;}return 0;}).map(function(item) {
           var isExternal = item.external;
           return <div key={item.id} onClick={function(){
