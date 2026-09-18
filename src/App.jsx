@@ -5771,6 +5771,56 @@ const ENTRY_TYPES = ["Note","Call","Text","Email","Site Visit","Meeting","Schedu
 function typeMeta(v) { for (var i=0;i<ITEM_TYPES.length;i++) { if (ITEM_TYPES[i][0]===v) return ITEM_TYPES[i]; } return ["other","Other","#8A8480"]; }
 function statusMeta(v) { for (var i=0;i<ITEM_STATUS.length;i++) { if (ITEM_STATUS[i][0]===v) return ITEM_STATUS[i]; } return ["open","Open","#5B6472"]; }
 
+/* ── Address Lookup (Production quick client-address finder) ── */
+function AddressLookup() {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  function run() {
+    var term = q.trim();
+    if (!term) return;
+    setSearching(true);
+    var parts = term.split(/\s+/).map(function(p){ return encodeURIComponent(p); });
+    var sel = "select=id,first_name,last_name,address,city,state,zip,phone_cell,phone_home&order=last_name.asc&limit=30";
+    var filter;
+    if (parts.length === 1) { filter = "or=(first_name.ilike.*"+parts[0]+"*,last_name.ilike.*"+parts[0]+"*)"; }
+    else { filter = "and=(" + parts.map(function(p){ return "or(first_name.ilike.*"+p+"*,last_name.ilike.*"+p+"*)"; }).join(",") + ")"; }
+    sbGet("contacts", sel+"&"+filter).then(function(r){ setResults(r||[]); setSearching(false); });
+  }
+  function shareAddr(c) {
+    var name = ((c.first_name||"")+" "+(c.last_name||"")).trim();
+    var addr = (c.address||"")+"\n"+((c.city||"")+", "+(c.state||"")+" "+(c.zip||"")).replace(/\s+/g," ").trim();
+    var text = name+"\n"+addr;
+    if (navigator.share) { navigator.share({title:name, text:text}).catch(function(){}); }
+    else { navigator.clipboard.writeText(text).then(function(){ alert("Address copied to clipboard!"); }); }
+  }
+  return <div style={{padding:"0 4px"}}>
+    <div style={{marginBottom:6}}><div style={{fontSize:18,fontWeight:700}}>Address Lookup</div>
+      <div style={{fontSize:12,color:"#8a8780"}}>Type a client name to find their job address.</div></div>
+    <div style={{display:"flex",gap:8,margin:"14px 0 18px"}}>
+      <input value={q} onChange={function(e){ setQ(e.target.value); }} onKeyDown={function(e){ if(e.key==="Enter") run(); }}
+        placeholder="Client name (last name works best)…"
+        style={{flex:1,padding:"11px 12px",border:"1px solid #d0cec7",borderRadius:8,fontSize:15,fontFamily:"inherit"}}/>
+      <button onClick={run} style={{padding:"11px 20px",borderRadius:8,border:"none",background:"#185FA5",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>Search</button>
+    </div>
+    {searching&&<div style={{padding:20,color:"#8a8780"}}>Searching…</div>}
+    {results!==null&&!searching&&results.length===0&&<div style={{padding:"30px 20px",textAlign:"center",color:"#8a8780",fontSize:13,background:"#fff",borderRadius:12,border:"1px solid #e8e6df"}}>No matches. Try just the last name.</div>}
+    {results!==null&&!searching&&results.length>0&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {results.map(function(c) {
+        var name = ((c.first_name||"")+" "+(c.last_name||"")).trim() || "—";
+        var phone = c.phone_cell || c.phone_home || "";
+        var line2 = ((c.city||"")+", "+(c.state||"")+" "+(c.zip||"")).replace(/\s+/g," ").trim();
+        return <div key={c.id} style={{background:"#fff",border:"1px solid #e8e6df",borderRadius:12,padding:"14px 16px"}}>
+          <div style={{fontSize:15,fontWeight:700,color:"#2c2a28"}}>{name}</div>
+          <div style={{fontSize:14,color:"#3B4A5E",marginTop:4,lineHeight:1.4}}>{c.address||<span style={{color:"#b0ada6"}}>No address on file</span>}{c.address&&line2?<br/>:null}{c.address?line2:""}</div>
+          {phone&&<div style={{marginTop:6,fontSize:13}}><a href={"tel:"+phone.replace(/[^0-9]/g,"")} style={{color:"#185FA5",fontWeight:600,textDecoration:"none"}}>📞 {fmtPhone(phone)}</a></div>}
+          {c.address&&<div style={{marginTop:12}}><button onClick={function(){ shareAddr(c); }} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #d0cec7",background:"#fff",color:"#185FA5",fontSize:13,fontWeight:700,cursor:"pointer"}}>📤 Share Address</button></div>}
+        </div>;
+      })}
+    </div>}
+  </div>;
+}
+
 function OpenItemsView({ authUser, onOpenProject }) {
   const [items, setItems] = useState(null);
   const [notes, setNotes] = useState([]);
@@ -6308,7 +6358,8 @@ function AuthenticatedApp({ authUser, onLogout }) {
           {id:"contacts",label:"Contacts",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"lifedeath",label:"Life & Death",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"_production",label:"Production",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 6-6"/></svg>;},external:"https://tlg-scheduler.vercel.app/",roles:["Owner","Admin","Sales","Production"]},
-          {id:"_builderstds",label:"Builder Standards",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>;},external:"/builder-standards.pdf",roles:["Owner","Admin","Sales","Production"]}
+          {id:"_builderstds",label:"Builder Standards",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>;},external:"/builder-standards.pdf",roles:["Owner","Admin","Sales","Production"]},
+          {id:"addresslookup",label:"Address Lookup",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>;},roles:["Production"]}
         ].filter(function(item){return !item.roles||item.roles.indexOf(effectiveRole)>=0;}).sort(function(a,b){if(effectiveRole==="Production"){if(a.id==="_production")return -1;if(b.id==="_production")return 1;}return 0;}).map(function(item) {
           var isExternal = item.external;
           return <div key={item.id} onClick={function(){
@@ -6334,6 +6385,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
     {(projectView!=="home"&&projectView!=="contactsview")&&<div>
       {projectView==="dashboard"&&<Dashboard onOpenProject={openProject}/>}
       {projectView==="pipeline"&&<PipelineView onOpenProject={isProduction?function(){}:openProject} readOnly={isProduction}/>}
+      {projectView==="addresslookup"&&<AddressLookup/>}
       {projectView==="openitems"&&<OpenItemsView authUser={authUser} onOpenProject={openProject}/>}
       {projectView==="stale"&&<StaleAlerts onOpenProject={openProject}/>}
       {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
