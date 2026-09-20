@@ -1,0 +1,9 @@
+# Shared Supabase project used by tlg-crm and tlg-scheduler.
+# Migrations and the sold-create function live here because the Sold
+# signal is CRM `public.projects.stage`. Do not enable the write flag
+# from this file — flag lives in ops_app_settings and defaults OFF.
+
+project_id = "dwkvdelvnmvniewakzoq"
+
+[functions.sold-create]
+verify_jwt = false
