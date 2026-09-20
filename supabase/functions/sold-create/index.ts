@@ -3,9 +3,12 @@ import {
   FLAG_KEY,
   SOLD_STAGE,
   buildOpsProjectRow,
+  colorFromPalette,
   computePhasePlan,
   extractProjectId,
+  forecastBaseOffset,
   isFlagEnabled,
+  nextQueuePosition,
   resolveBathTemplateKey,
 } from "./mapper.js";
 
@@ -59,12 +62,25 @@ async function nextForecastQueuePosition(sb: ReturnType<typeof createClient>) {
   const { data, error } = await sb
     .from("ops_project_schedule")
     .select("queue_position")
-    .eq("status", "forecast")
-    .order("queue_position", { ascending: false, nullsFirst: false })
-    .limit(1);
+    .eq("status", "forecast");
   if (error) throw error;
-  const max = data?.[0]?.queue_position;
-  return (typeof max === "number" ? max : 0) + 1;
+  return nextQueuePosition(data || []);
+}
+
+async function existingProjectCount(sb: ReturnType<typeof createClient>) {
+  const { count, error } = await sb
+    .from("ops_project_schedule")
+    .select("id", { count: "exact", head: true });
+  if (error) throw error;
+  return count ?? 0;
+}
+
+async function loadPhaseExtents(sb: ReturnType<typeof createClient>) {
+  const { data, error } = await sb
+    .from("ops_phases")
+    .select("start_day_offset, planned_days");
+  if (error) throw error;
+  return data || [];
 }
 
 async function insertPhases(
@@ -131,9 +147,19 @@ Deno.serve(async (req) => {
 
     const contact = await loadContact(sb, project.contact_id);
     const templateKey = resolveBathTemplateKey(project);
-    const queuePosition = await nextForecastQueuePosition(sb);
-    const opsProject = buildOpsProjectRow(project, contact, queuePosition);
-    const phases = templateKey ? computePhasePlan(templateKey) : [];
+    const [queuePosition, projectCount] = await Promise.all([
+      nextForecastQueuePosition(sb),
+      existingProjectCount(sb),
+    ]);
+    const opsProject = buildOpsProjectRow(project, contact, {
+      queuePosition,
+      color: colorFromPalette(projectCount),
+    });
+    let phases: ReturnType<typeof computePhasePlan> = [];
+    if (templateKey) {
+      const baseOffset = forecastBaseOffset(await loadPhaseExtents(sb));
+      phases = computePhasePlan(templateKey, baseOffset);
+    }
 
     if (dryRun) {
       return json({

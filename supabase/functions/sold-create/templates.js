@@ -1,7 +1,5 @@
-// First-pass bath templates from live tlg-scheduler.vercel.app (2026-09-20).
-// tlg-scheduler GitHub was not readable from this agent; these match the
-// attached project_templates_excerpt.js and the live SPA PROJECT_TEMPLATES.
-// Keys only: bath-lvp, bath-tile. Never apply these to kitchen / whole-house.
+// PROJECT_TEMPLATES from tlg-scheduler main @ 18696ef3f7514ef47ec23b163b29032e3fa8a7a6
+// (live SPA + attached excerpt). Keys only: bath-lvp, bath-tile. Do not add more.
 
 export const PROJECT_TEMPLATES = {
   "bath-lvp": {
