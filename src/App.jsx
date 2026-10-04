@@ -5796,6 +5796,14 @@ function TradePartnerCard({ p, onEdit }) {
         {p.primary_email&&<a href={"mailto:"+p.primary_email} style={{color:"#185FA5",textDecoration:"none"}}>{p.primary_email}</a>}
       </div>
     </div>}
+    {(p.sched_name||p.sched_cell||p.sched_email)&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f0ede9"}}>
+      <div style={{fontSize:9,fontWeight:700,color:"#2D6A4F",textTransform:"uppercase",letterSpacing:".06em",marginBottom:3}}>📅 Scheduling Contact</div>
+      <div style={{fontSize:13,fontWeight:600,color:"#2c2a28"}}>{p.sched_name||"—"}</div>
+      <div style={{fontSize:13,color:"#3B4A5E",lineHeight:1.5}}>
+        {p.sched_cell&&<span>📞 <a href={"tel:"+p.sched_cell.replace(/[^0-9]/g,"")} style={{color:"#185FA5",textDecoration:"none"}}>{tpPhone(p.sched_cell)}</a>&nbsp;&nbsp;</span>}
+        {p.sched_email&&<a href={"mailto:"+p.sched_email} style={{color:"#185FA5",textDecoration:"none"}}>{p.sched_email}</a>}
+      </div>
+    </div>}
     {secs.length>0&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f0ede9"}}>
       <div style={{fontSize:9,fontWeight:700,color:"#8a8780",textTransform:"uppercase",letterSpacing:".06em",marginBottom:5}}>Additional Contacts</div>
       {secs.map(function(s,i){ return <div key={i} style={{marginBottom:5}}>
@@ -5824,12 +5832,14 @@ function TradePartners({ canEdit }) {
   function addSec(){ setForm(function(prev){ return {...prev, secondary_contacts:(prev.secondary_contacts||[]).concat([{name:"",cell:"",email:""}])}; }); }
   function setSec(i,k,v){ setForm(function(prev){ var arr=(prev.secondary_contacts||[]).slice(); arr[i]={...arr[i]}; arr[i][k]=v; return {...prev, secondary_contacts:arr}; }); }
   function rmSec(i){ setForm(function(prev){ var arr=(prev.secondary_contacts||[]).slice(); arr.splice(i,1); return {...prev, secondary_contacts:arr}; }); }
+  function useAsSched(c){ setForm(function(prev){ return {...prev, sched_name:c.name||"", sched_cell:c.cell||"", sched_email:c.email||""}; }); }
   async function save() {
     if(!form.company_name||!form.company_name.trim()){ alert("Company name is required."); return; }
     setSaving(true);
     var body = { company_name:form.company_name.trim(), phase:(form.phase||"").trim()||null,
       company_phone:(form.company_phone||"").trim()||null, company_email:(form.company_email||"").trim()||null,
       primary_name:(form.primary_name||"").trim()||null, primary_cell:(form.primary_cell||"").trim()||null, primary_email:(form.primary_email||"").trim()||null,
+      sched_name:(form.sched_name||"").trim()||null, sched_cell:(form.sched_cell||"").trim()||null, sched_email:(form.sched_email||"").trim()||null,
       secondary_contacts:(form.secondary_contacts||[]).filter(function(c){ return (c.name||c.cell||c.email); }),
       notes:(form.notes||"").trim()||null };
     if(form.id){ await sbUpdate("trade_partners", form.id, body); } else { await sbInsert("trade_partners", body); }
@@ -5872,6 +5882,19 @@ function TradePartners({ canEdit }) {
         <div style={{display:"flex",gap:10}}>
           <div style={{flex:1}}><label style={lbl}>Cell</label><input value={form.primary_cell||""} onChange={function(e){setF("primary_cell",e.target.value);}} style={inp}/></div>
           <div style={{flex:1}}><label style={lbl}>Email</label><input value={form.primary_email||""} onChange={function(e){setF("primary_email",e.target.value);}} style={inp}/></div>
+        </div>
+      </div>
+      <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #eeebe6"}}>
+        <div style={{fontSize:11,fontWeight:800,color:"#2D6A4F",textTransform:"uppercase",letterSpacing:".06em"}}>📅 Scheduling Contact</div>
+        {(form.primary_name||(form.secondary_contacts||[]).some(function(s){return s.name;}))&&<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginTop:8,fontSize:11,color:"#8a8780"}}>
+          <span>Copy from:</span>
+          {form.primary_name&&<button onClick={function(){useAsSched({name:form.primary_name,cell:form.primary_cell,email:form.primary_email});}} style={{border:"1px solid #c8ddd0",background:"#f0f7f2",color:"#2D6A4F",borderRadius:14,padding:"3px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Primary</button>}
+          {(form.secondary_contacts||[]).map(function(s,i){ return s.name?<button key={i} onClick={function(){useAsSched(s);}} style={{border:"1px solid #c8ddd0",background:"#f0f7f2",color:"#2D6A4F",borderRadius:14,padding:"3px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>{s.name.split(/\s+/)[0]}</button>:null; })}
+        </div>}
+        <label style={lbl}>Name</label><input value={form.sched_name||""} onChange={function(e){setF("sched_name",e.target.value);}} style={inp}/>
+        <div style={{display:"flex",gap:10}}>
+          <div style={{flex:1}}><label style={lbl}>Cell</label><input value={form.sched_cell||""} onChange={function(e){setF("sched_cell",e.target.value);}} style={inp}/></div>
+          <div style={{flex:1}}><label style={lbl}>Email</label><input value={form.sched_email||""} onChange={function(e){setF("sched_email",e.target.value);}} style={inp}/></div>
         </div>
       </div>
       <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #eeebe6"}}>
