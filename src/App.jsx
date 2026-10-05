@@ -5882,9 +5882,11 @@ function TradePartnersDirectory({ canEdit }) {
     return hay.indexOf(term)>=0;
   }
   var phases = {};
+  TP_SECTION_SUGGESTIONS.forEach(function(s){ phases[s]=[]; });
   partners.forEach(function(p){ var ph=p.phase||"Other"; if(!phases[ph]) phases[ph]=[]; phases[ph].push(p); });
   Object.keys(phases).forEach(function(k){ phases[k].sort(function(a,b){ var oa=TP_ORDER[a.tier]!==undefined?TP_ORDER[a.tier]:9; var ob=TP_ORDER[b.tier]!==undefined?TP_ORDER[b.tier]:9; if(oa!==ob) return oa-ob; return (a.company_name||"").toLowerCase()<(b.company_name||"").toLowerCase()?-1:1; }); });
   var phaseKeys = Object.keys(phases).sort();
+  if(!canEdit){ phaseKeys = phaseKeys.filter(function(ph){ return phases[ph].some(function(p){ return !p.archived; }); }); }
   var allPhaseOptions = (function(){ var s={}; partners.forEach(function(p){ if(p.phase) s[p.phase]=true; }); TP_SECTION_SUGGESTIONS.forEach(function(x){ s[x]=true; }); return Object.keys(s).sort(); })();
 
   var inp = {width:"100%",padding:9,border:"1px solid #e2e6ed",borderRadius:8,fontSize:13,boxSizing:"border-box",fontFamily:"inherit"};
@@ -5928,6 +5930,7 @@ function TradePartnersDirectory({ canEdit }) {
           </div>
         </div>
         {isOpen&&<div style={{border:"1px solid #e8e6df",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
+          {phases[ph].length===0&&<div style={{padding:"16px 14px",textAlign:"center",color:"#b0ada6",fontSize:12}}>No vendors here yet{canEdit?" — tap + Add above to add one":""}.</div>}
           {phases[ph].filter(function(p){return !p.archived;}).map(function(p){ return row(p); })}
           {canEdit&&phases[ph].filter(function(p){return p.archived;}).length>0&&<div onClick={function(){ setShowArch(function(prev){ var n={...prev}; n[ph]=!prev[ph]; return n; }); }} style={{padding:"9px 14px",borderTop:"1px solid #f0ede9",fontSize:12,fontWeight:600,color:"#8a8780",cursor:"pointer",background:"#faf9f7"}}>{showArch[ph]?"▾ Hide archived":"▸ Show "+phases[ph].filter(function(p){return p.archived;}).length+" archived"}</div>}
           {canEdit&&showArch[ph]&&phases[ph].filter(function(p){return p.archived;}).map(function(p){ return row(p); })}
