@@ -5827,6 +5827,7 @@ function TradePartnersDirectory({ canEdit }) {
   const [partners, setPartners] = useState(null);
   const [q, setQ] = useState("");
   const [openPhases, setOpenPhases] = useState({});
+  const [showArch, setShowArch] = useState({});
   const [viewing, setViewing] = useState(null);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -5837,7 +5838,7 @@ function TradePartnersDirectory({ canEdit }) {
   function openEdit(p) {
     setViewing(null); setDelConfirm(false);
     setForm(p ? {...p, secondary_contacts: Array.isArray(p.secondary_contacts)?p.secondary_contacts.slice():[], sched_contacts: Array.isArray(p.sched_contacts)?p.sched_contacts.slice():[]} :
-      {company_name:"",phase:"",company_phone:"",company_email:"",primary_name:"",primary_cell:"",primary_email:"",sched_contacts:[],secondary_contacts:[],notes:""});
+      {company_name:"",phase:"",tier:"",company_phone:"",company_email:"",primary_name:"",primary_cell:"",primary_email:"",sched_contacts:[],secondary_contacts:[],notes:"",archived:false});
   }
   function setF(k,v){ setForm(function(prev){ var n={...prev}; n[k]=v; return n; }); }
   function addRow(key){ setForm(function(prev){ var n={...prev}; n[key]=(prev[key]||[]).concat([{name:"",cell:"",email:""}]); return n; }); }
@@ -5851,7 +5852,7 @@ function TradePartnersDirectory({ canEdit }) {
     var body = { company_name:form.company_name.trim(), phase:(form.phase||"").trim()||null, tier:(form.tier||"").trim()||null,
       company_phone:(form.company_phone||"").trim()||null, company_email:(form.company_email||"").trim()||null,
       primary_name:(form.primary_name||"").trim()||null, primary_cell:(form.primary_cell||"").trim()||null, primary_email:(form.primary_email||"").trim()||null,
-      sched_contacts:clean(form.sched_contacts), secondary_contacts:clean(form.secondary_contacts), notes:(form.notes||"").trim()||null };
+      sched_contacts:clean(form.sched_contacts), secondary_contacts:clean(form.secondary_contacts), notes:(form.notes||"").trim()||null, archived:!!form.archived };
     if(form.id){ await sbUpdate("trade_partners", form.id, body); } else { await sbInsert("trade_partners", body); }
     setSaving(false); setForm(null); load();
   }
@@ -5876,9 +5877,9 @@ function TradePartnersDirectory({ canEdit }) {
   function row(p){
     var scheds = Array.isArray(p.sched_contacts)?p.sched_contacts:[];
     var s0 = scheds[0];
-    return <div key={p.id} onClick={function(){setViewing(p);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px 11px 18px",borderTop:"1px solid #f0ede9",cursor:"pointer",background:"#fff"}}>
+    return <div key={p.id} onClick={function(){setViewing(p);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px 11px 18px",borderTop:"1px solid #f0ede9",cursor:"pointer",background:"#fff",opacity:p.archived?0.6:1}}>
       <div style={{minWidth:0}}>
-        <div style={{fontSize:14,fontWeight:700,color:"#2c2a28",display:"flex",alignItems:"center"}}>{tierBadge(p.tier,18)}<span>{p.company_name}</span>{schedStar(scheds,13)}</div>
+        <div style={{fontSize:14,fontWeight:700,color:"#2c2a28",display:"flex",alignItems:"center",flexWrap:"wrap"}}>{tierBadge(p.tier,18)}<span>{p.company_name}</span>{schedStar(scheds,13)}{p.archived&&<span style={{marginLeft:7,fontSize:9,fontWeight:700,color:"#8a8780",background:"#f0eeea",padding:"1px 6px",borderRadius:4,textTransform:"uppercase",letterSpacing:".04em"}}>Archived</span>}</div>
         <div style={{fontSize:12,color:"#6b6960",marginTop:2}}>📞 {p.primary_name?p.primary_name+" · ":""}{(p.primary_cell||p.company_phone)?<a href={tpTel(p.primary_cell||p.company_phone)} onClick={function(e){e.stopPropagation();}} style={{color:"#185FA5",textDecoration:"none"}}>{tpPhone(p.primary_cell||p.company_phone)}</a>:"—"}</div>
         {s0&&<div style={{display:"inline-block",marginTop:5,background:"#eaf5ee",color:"#2D6A4F",fontSize:11,fontWeight:700,padding:"3px 9px",borderRadius:12}}>📅 Schedule · {s0.cell?<a href={tpTel(s0.cell)} onClick={function(e){e.stopPropagation();}} style={{color:"#2D6A4F",textDecoration:"none"}}>{tpPhone(s0.cell)}</a>:(s0.name||"see card")}{scheds.length>1?"   +"+(scheds.length-1):""}</div>}
       </div>
@@ -5895,8 +5896,8 @@ function TradePartnersDirectory({ canEdit }) {
     <input value={q} onChange={function(e){setQ(e.target.value);}} placeholder="Search trade, company, or contact…" style={{...inp,padding:"11px 12px",fontSize:15,margin:"12px 0 14px"}}/>
 
     {term?<div style={{border:"1px solid #e8e6df",borderRadius:10,overflow:"hidden"}}>
-      {partners.filter(matches).length===0?<div style={{padding:"26px",textAlign:"center",color:"#8a8780",fontSize:13}}>No matches.</div>:
-        partners.filter(matches).map(function(p){ return row(p); })}
+      {partners.filter(matches).filter(function(p){return canEdit||!p.archived;}).length===0?<div style={{padding:"26px",textAlign:"center",color:"#8a8780",fontSize:13}}>No matches.</div>:
+        partners.filter(matches).filter(function(p){return canEdit||!p.archived;}).map(function(p){ return row(p); })}
     </div>
     :
     phaseKeys.map(function(ph){
@@ -5905,10 +5906,12 @@ function TradePartnersDirectory({ canEdit }) {
         <div onClick={function(){ setOpenPhases(function(prev){ var n={...prev}; n[ph]=!prev[ph]; return n; }); }}
           style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:isOpen?"#faf8f5":"#fff",border:"1px solid #e8e6df",borderRadius:isOpen?"10px 10px 0 0":10,borderBottom:isOpen?"none":"1px solid #e8e6df",padding:"13px 14px",cursor:"pointer"}}>
           <div><span style={{color:"#8896A8",fontSize:12,marginRight:9}}>{isOpen?"▾":"▸"}</span><span style={{fontSize:13,fontWeight:800,color:"#243F81",letterSpacing:".04em",textTransform:"uppercase"}}>{ph}</span></div>
-          <div style={{fontSize:12,fontWeight:700,color:"#8896A8"}}>{phases[ph].length}</div>
+          <div style={{fontSize:12,fontWeight:700,color:"#8896A8"}}>{phases[ph].filter(function(p){return !p.archived;}).length}</div>
         </div>
         {isOpen&&<div style={{border:"1px solid #e8e6df",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
-          {phases[ph].map(function(p){ return row(p); })}
+          {phases[ph].filter(function(p){return !p.archived;}).map(function(p){ return row(p); })}
+          {canEdit&&phases[ph].filter(function(p){return p.archived;}).length>0&&<div onClick={function(){ setShowArch(function(prev){ var n={...prev}; n[ph]=!prev[ph]; return n; }); }} style={{padding:"9px 14px",borderTop:"1px solid #f0ede9",fontSize:12,fontWeight:600,color:"#8a8780",cursor:"pointer",background:"#faf9f7"}}>{showArch[ph]?"▾ Hide archived":"▸ Show "+phases[ph].filter(function(p){return p.archived;}).length+" archived"}</div>}
+          {canEdit&&showArch[ph]&&phases[ph].filter(function(p){return p.archived;}).map(function(p){ return row(p); })}
         </div>}
       </div>;
     })}
@@ -5971,7 +5974,8 @@ function TradePartnersDirectory({ canEdit }) {
       </div>
       <label style={flbl}>Notes <span style={{fontWeight:400,textTransform:"none",color:"#b0ada6"}}>(address, order emails, fax, etc.)</span></label>
       <textarea value={form.notes||""} onChange={function(e){setF("notes",e.target.value);}} style={{...inp,minHeight:60,resize:"vertical"}}/>
-      <div style={{display:"flex",gap:8,marginTop:18,alignItems:"center"}}>
+      <button onClick={function(){setF("archived",!form.archived);}} style={{display:"flex",alignItems:"center",gap:8,marginTop:14,width:"100%",textAlign:"left",background:form.archived?"#f0eeea":"#fff",border:"1px solid "+(form.archived?"#c9c4bb":"#e2e6ed"),borderRadius:8,padding:"10px 12px",fontSize:13,fontWeight:600,color:form.archived?"#6b6960":"#3B4A5E",cursor:"pointer"}}><span style={{fontSize:16}}>{form.archived?"📦":"📂"}</span>{form.archived?"Archived — hidden from the active list (tap to bring back)":"Archive this partner (hide it, don't delete)"}</button>
+      <div style={{display:"flex",gap:8,marginTop:14,alignItems:"center"}}>
         <button onClick={save} disabled={saving} style={{...btnP,flex:1,padding:11}}>{saving?"Saving…":(form.id?"Save changes":"Add partner")}</button>
         <button onClick={function(){setForm(null);}} style={{...btnSec,padding:11}}>Cancel</button>
       </div>
