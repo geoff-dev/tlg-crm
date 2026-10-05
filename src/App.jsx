@@ -5785,6 +5785,11 @@ function tpContactLine(c, color) {
     {c.email&&<a href={"mailto:"+c.email} style={{color:linkCol,textDecoration:"none"}}>{c.email}</a>}
   </div>;
 }
+var TP_TIERS = ["A","B","C","D","F"];
+var TP_ORDER = {A:0,B:1,C:2,D:3,F:4};
+function tierMeta(t){ var m={A:{bg:"#eaf5ee",fg:"#2D6A4F"},B:{bg:"#eaf1f7",fg:"#1E40AF"},C:{bg:"#FAEEDA",fg:"#B45309"},D:{bg:"#efece7",fg:"#6b6960"},F:{bg:"#fdecec",fg:"#B91C1C"}}; return m[t]||null; }
+function tierBadge(t,size){ var m=tierMeta(t); if(!m) return null; var s=size||20; return <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:s,height:s,borderRadius:5,background:m.bg,color:m.fg,fontSize:Math.round(s*0.6),fontWeight:800,marginRight:7,flexShrink:0}}>{t}</span>; }
+function schedStar(scheds,size){ return (scheds&&scheds.length>0)?<span title="Has a scheduling contact" style={{color:"#2D6A4F",marginLeft:7,fontSize:size||15}}>★</span>:null; }
 function TradePartnerCard({ p, onEdit }) {
   var secs = Array.isArray(p.secondary_contacts) ? p.secondary_contacts : [];
   var scheds = Array.isArray(p.sched_contacts) ? p.sched_contacts : [];
@@ -5793,7 +5798,7 @@ function TradePartnerCard({ p, onEdit }) {
   return <div style={{background:"#fff",border:"1px solid #e8e6df",borderRadius:12,padding:"14px 16px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
       <div>
-        <div style={{fontSize:16,fontWeight:700,color:"#2c2a28"}}>{p.company_name}</div>
+        <div style={{fontSize:16,fontWeight:700,color:"#2c2a28",display:"flex",alignItems:"center"}}>{tierBadge(p.tier)}<span>{p.company_name}</span>{schedStar(scheds)}</div>
         {p.phase&&<div style={{fontSize:10,fontWeight:700,color:"#3974B7",background:"#eaf1f7",display:"inline-block",padding:"2px 8px",borderRadius:5,marginTop:4,textTransform:"uppercase",letterSpacing:".04em"}}>{p.phase}</div>}
       </div>
       {onEdit&&<button onClick={function(){onEdit(p);}} style={{background:"none",border:"1px solid #d0cec7",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,color:"#185FA5",cursor:"pointer"}}>Edit</button>}
@@ -5843,7 +5848,7 @@ function TradePartnersDirectory({ canEdit }) {
     if(!form.company_name||!form.company_name.trim()){ alert("Company name is required."); return; }
     setSaving(true);
     function clean(arr){ return (arr||[]).filter(function(c){ return (c.name||c.cell||c.email); }); }
-    var body = { company_name:form.company_name.trim(), phase:(form.phase||"").trim()||null,
+    var body = { company_name:form.company_name.trim(), phase:(form.phase||"").trim()||null, tier:(form.tier||"").trim()||null,
       company_phone:(form.company_phone||"").trim()||null, company_email:(form.company_email||"").trim()||null,
       primary_name:(form.primary_name||"").trim()||null, primary_cell:(form.primary_cell||"").trim()||null, primary_email:(form.primary_email||"").trim()||null,
       sched_contacts:clean(form.sched_contacts), secondary_contacts:clean(form.secondary_contacts), notes:(form.notes||"").trim()||null };
@@ -5862,6 +5867,7 @@ function TradePartnersDirectory({ canEdit }) {
   }
   var phases = {};
   partners.forEach(function(p){ var ph=p.phase||"Other"; if(!phases[ph]) phases[ph]=[]; phases[ph].push(p); });
+  Object.keys(phases).forEach(function(k){ phases[k].sort(function(a,b){ var oa=TP_ORDER[a.tier]!==undefined?TP_ORDER[a.tier]:9; var ob=TP_ORDER[b.tier]!==undefined?TP_ORDER[b.tier]:9; if(oa!==ob) return oa-ob; return (a.company_name||"").toLowerCase()<(b.company_name||"").toLowerCase()?-1:1; }); });
   var phaseKeys = Object.keys(phases).sort();
 
   var inp = {width:"100%",padding:9,border:"1px solid #e2e6ed",borderRadius:8,fontSize:13,boxSizing:"border-box",fontFamily:"inherit"};
@@ -5872,7 +5878,7 @@ function TradePartnersDirectory({ canEdit }) {
     var s0 = scheds[0];
     return <div key={p.id} onClick={function(){setViewing(p);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px 11px 18px",borderTop:"1px solid #f0ede9",cursor:"pointer",background:"#fff"}}>
       <div style={{minWidth:0}}>
-        <div style={{fontSize:14,fontWeight:700,color:"#2c2a28"}}>{p.company_name}</div>
+        <div style={{fontSize:14,fontWeight:700,color:"#2c2a28",display:"flex",alignItems:"center"}}>{tierBadge(p.tier,18)}<span>{p.company_name}</span>{schedStar(scheds,13)}</div>
         <div style={{fontSize:12,color:"#6b6960",marginTop:2}}>📞 {p.primary_name?p.primary_name+" · ":""}{(p.primary_cell||p.company_phone)?<a href={tpTel(p.primary_cell||p.company_phone)} onClick={function(e){e.stopPropagation();}} style={{color:"#185FA5",textDecoration:"none"}}>{tpPhone(p.primary_cell||p.company_phone)}</a>:"—"}</div>
         {s0&&<div style={{display:"inline-block",marginTop:5,background:"#eaf5ee",color:"#2D6A4F",fontSize:11,fontWeight:700,padding:"3px 9px",borderRadius:12}}>📅 Schedule · {s0.cell?<a href={tpTel(s0.cell)} onClick={function(e){e.stopPropagation();}} style={{color:"#2D6A4F",textDecoration:"none"}}>{tpPhone(s0.cell)}</a>:(s0.name||"see card")}{scheds.length>1?"   +"+(scheds.length-1):""}</div>}
       </div>
@@ -5916,6 +5922,10 @@ function TradePartnersDirectory({ canEdit }) {
       <input value={form.company_name} onChange={function(e){setF("company_name",e.target.value);}} style={inp}/>
       <label style={flbl}>Phase / Trade</label>
       <input value={form.phase||""} onChange={function(e){setF("phase",e.target.value);}} placeholder="e.g. Electricians, Cabinets, Plumbing" style={inp}/>
+      <label style={flbl}>Tier <span style={{fontWeight:400,textTransform:"none",color:"#b0ada6"}}>(A go-to · B backup · C unvetted · D no longer use · F never again)</span></label>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {TP_TIERS.map(function(t){ var m=tierMeta(t); var sel=form.tier===t; return <button key={t} onClick={function(){setF("tier",sel?"":t);}} style={{width:40,height:34,borderRadius:7,border:"1.5px solid "+(sel?m.fg:"#e2e6ed"),background:sel?m.bg:"#fff",color:sel?m.fg:"#8896A8",fontWeight:800,fontSize:15,cursor:"pointer"}}>{t}</button>; })}
+      </div>
       <div style={{display:"flex",gap:10}}>
         <div style={{flex:1}}><label style={flbl}>Company Phone</label><input value={form.company_phone||""} onChange={function(e){setF("company_phone",e.target.value);}} style={inp}/></div>
         <div style={{flex:1}}><label style={flbl}>Company Email</label><input value={form.company_email||""} onChange={function(e){setF("company_email",e.target.value);}} style={inp}/></div>
