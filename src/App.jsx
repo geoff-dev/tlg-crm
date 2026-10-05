@@ -5793,13 +5793,17 @@ function schedStar(scheds,size){ return (scheds&&scheds.length>0)?<span title="H
 function TradePartnerCard({ p, onEdit }) {
   var secs = Array.isArray(p.secondary_contacts) ? p.secondary_contacts : [];
   var scheds = Array.isArray(p.sched_contacts) ? p.sched_contacts : [];
+  var subcats = Array.isArray(p.subcategories) ? p.subcategories : [];
   var sect = {marginTop:10,paddingTop:10,borderTop:"1px solid #f0ede9"};
   var lbl = {fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",marginBottom:4};
   return <div style={{background:"#fff",border:"1px solid #e8e6df",borderRadius:12,padding:"14px 16px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
       <div>
         <div style={{fontSize:16,fontWeight:700,color:"#2c2a28",display:"flex",alignItems:"center"}}>{tierBadge(p.tier)}<span>{p.company_name}</span>{schedStar(scheds)}</div>
-        {p.phase&&<div style={{fontSize:10,fontWeight:700,color:"#3974B7",background:"#eaf1f7",display:"inline-block",padding:"2px 8px",borderRadius:5,marginTop:4,textTransform:"uppercase",letterSpacing:".04em"}}>{p.phase}</div>}
+        {(p.phase||subcats.length>0)&&<div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:4,alignItems:"center"}}>
+          {p.phase&&<span style={{fontSize:10,fontWeight:700,color:"#3974B7",background:"#eaf1f7",padding:"2px 8px",borderRadius:5,textTransform:"uppercase",letterSpacing:".04em"}}>{p.phase}</span>}
+          {subcats.map(function(s,i){ return <span key={i} style={{fontSize:10,fontWeight:600,color:"#5b6472",background:"#eef1f5",padding:"2px 8px",borderRadius:5}}>{s}</span>; })}
+        </div>}
       </div>
       {onEdit&&<button onClick={function(){onEdit(p);}} style={{background:"none",border:"1px solid #d0cec7",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,color:"#185FA5",cursor:"pointer"}}>Edit</button>}
     </div>
@@ -5828,6 +5832,7 @@ function TradePartnersDirectory({ canEdit }) {
   const [q, setQ] = useState("");
   const [openPhases, setOpenPhases] = useState({});
   const [showArch, setShowArch] = useState({});
+  const [subInput, setSubInput] = useState("");
   const [viewing, setViewing] = useState(null);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -5837,19 +5842,22 @@ function TradePartnersDirectory({ canEdit }) {
 
   function openEdit(p, presetPhase) {
     setViewing(null); setDelConfirm(false);
-    setForm(p ? {...p, secondary_contacts: Array.isArray(p.secondary_contacts)?p.secondary_contacts.slice():[], sched_contacts: Array.isArray(p.sched_contacts)?p.sched_contacts.slice():[]} :
-      {company_name:"",phase:presetPhase||"",tier:"",company_phone:"",company_email:"",primary_name:"",primary_cell:"",primary_email:"",sched_contacts:[],secondary_contacts:[],notes:"",archived:false});
+    setSubInput("");
+    setForm(p ? {...p, secondary_contacts: Array.isArray(p.secondary_contacts)?p.secondary_contacts.slice():[], sched_contacts: Array.isArray(p.sched_contacts)?p.sched_contacts.slice():[], subcategories: Array.isArray(p.subcategories)?p.subcategories.slice():[]} :
+      {company_name:"",phase:presetPhase||"",tier:"",subcategories:[],company_phone:"",company_email:"",primary_name:"",primary_cell:"",primary_email:"",sched_contacts:[],secondary_contacts:[],notes:"",archived:false});
   }
   function setF(k,v){ setForm(function(prev){ var n={...prev}; n[k]=v; return n; }); }
   function addRow(key){ setForm(function(prev){ var n={...prev}; n[key]=(prev[key]||[]).concat([{name:"",cell:"",email:""}]); return n; }); }
   function setRow(key,i,k,v){ setForm(function(prev){ var arr=(prev[key]||[]).slice(); arr[i]={...arr[i]}; arr[i][k]=v; var n={...prev}; n[key]=arr; return n; }); }
   function rmRow(key,i){ setForm(function(prev){ var arr=(prev[key]||[]).slice(); arr.splice(i,1); var n={...prev}; n[key]=arr; return n; }); }
   function addSchedFrom(c){ setForm(function(prev){ return {...prev, sched_contacts:(prev.sched_contacts||[]).concat([{name:c.name||"",cell:c.cell||"",email:c.email||""}])}; }); }
+  function addSub(v){ var val=(v||"").trim(); if(!val) return; setForm(function(prev){ var arr=(prev.subcategories||[]).slice(); if(arr.map(function(x){return x.toLowerCase();}).indexOf(val.toLowerCase())<0) arr.push(val); return {...prev, subcategories:arr}; }); setSubInput(""); }
+  function rmSub(i){ setForm(function(prev){ var arr=(prev.subcategories||[]).slice(); arr.splice(i,1); return {...prev, subcategories:arr}; }); }
   async function save() {
     if(!form.company_name||!form.company_name.trim()){ alert("Company name is required."); return; }
     setSaving(true);
     function clean(arr){ return (arr||[]).filter(function(c){ return (c.name||c.cell||c.email); }); }
-    var body = { company_name:form.company_name.trim(), phase:(form.phase||"").trim()||null, tier:(form.tier||"").trim()||null,
+    var body = { company_name:form.company_name.trim(), phase:(form.phase||"").trim()||null, tier:(form.tier||"").trim()||null, subcategories:(form.subcategories||[]).filter(function(s){return s&&s.trim();}),
       company_phone:(form.company_phone||"").trim()||null, company_email:(form.company_email||"").trim()||null,
       primary_name:(form.primary_name||"").trim()||null, primary_cell:(form.primary_cell||"").trim()||null, primary_email:(form.primary_email||"").trim()||null,
       sched_contacts:clean(form.sched_contacts), secondary_contacts:clean(form.secondary_contacts), notes:(form.notes||"").trim()||null, archived:!!form.archived };
@@ -5870,14 +5878,16 @@ function TradePartnersDirectory({ canEdit }) {
   partners.forEach(function(p){ var ph=p.phase||"Other"; if(!phases[ph]) phases[ph]=[]; phases[ph].push(p); });
   Object.keys(phases).forEach(function(k){ phases[k].sort(function(a,b){ var oa=TP_ORDER[a.tier]!==undefined?TP_ORDER[a.tier]:9; var ob=TP_ORDER[b.tier]!==undefined?TP_ORDER[b.tier]:9; if(oa!==ob) return oa-ob; return (a.company_name||"").toLowerCase()<(b.company_name||"").toLowerCase()?-1:1; }); });
   var phaseKeys = Object.keys(phases).sort();
+  var subSuggestions = [];
+  if(form){ var _seen={}; partners.forEach(function(p){ if((p.phase||"")===(form.phase||"")) (p.subcategories||[]).forEach(function(s){ _seen[s]=true; }); }); subSuggestions = Object.keys(_seen).filter(function(s){ return (form.subcategories||[]).map(function(x){return x.toLowerCase();}).indexOf(s.toLowerCase())<0; }).sort(); }
 
   var inp = {width:"100%",padding:9,border:"1px solid #e2e6ed",borderRadius:8,fontSize:13,boxSizing:"border-box",fontFamily:"inherit"};
   var flbl = {fontSize:10,fontWeight:700,color:"#8a8780",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4,marginTop:12,display:"block"};
 
-  function row(p){
+  function row(p, kp){
     var scheds = Array.isArray(p.sched_contacts)?p.sched_contacts:[];
     var s0 = scheds[0];
-    return <div key={p.id} onClick={function(){setViewing(p);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px 11px 18px",borderTop:"1px solid #f0ede9",cursor:"pointer",background:"#fff",opacity:p.archived?0.6:1}}>
+    return <div key={(kp||"")+p.id} onClick={function(){setViewing(p);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px 11px 18px",borderTop:"1px solid #f0ede9",cursor:"pointer",background:"#fff",opacity:p.archived?0.6:1}}>
       <div style={{minWidth:0}}>
         <div style={{fontSize:14,fontWeight:700,color:"#2c2a28",display:"flex",alignItems:"center",flexWrap:"wrap"}}>{tierBadge(p.tier,18)}<span>{p.company_name}</span>{schedStar(scheds,13)}{p.archived&&<span style={{marginLeft:7,fontSize:9,fontWeight:700,color:"#8a8780",background:"#f0eeea",padding:"1px 6px",borderRadius:4,textTransform:"uppercase",letterSpacing:".04em"}}>Archived</span>}</div>
         <div style={{fontSize:12,color:"#6b6960",marginTop:2}}>📞 {p.primary_name?p.primary_name+" · ":""}{(p.primary_cell||p.company_phone)?<a href={tpTel(p.primary_cell||p.company_phone)} onClick={function(e){e.stopPropagation();}} style={{color:"#185FA5",textDecoration:"none"}}>{tpPhone(p.primary_cell||p.company_phone)}</a>:"—"}</div>
@@ -5885,6 +5895,17 @@ function TradePartnersDirectory({ canEdit }) {
       </div>
       <div style={{color:"#c0bdb5",fontSize:18,paddingLeft:8}}>›</div>
     </div>;
+  }
+  var subHdr = {padding:"6px 14px 6px 18px",background:"#f6f4f0",borderTop:"1px solid #f0ede9",fontSize:10,fontWeight:800,color:"#8a7d66",textTransform:"uppercase",letterSpacing:".06em"};
+  function renderActive(list){
+    var hasSub = list.some(function(p){ return Array.isArray(p.subcategories)&&p.subcategories.length>0; });
+    if(!hasSub) return list.map(function(p){ return row(p); });
+    var groups={}, none=[];
+    list.forEach(function(p){ var sc=Array.isArray(p.subcategories)?p.subcategories:[]; if(sc.length===0){ none.push(p); } else sc.forEach(function(s){ if(!groups[s]) groups[s]=[]; groups[s].push(p); }); });
+    var out=[];
+    Object.keys(groups).sort().forEach(function(k){ out.push(<div key={"sh-"+k} style={subHdr}>{k}</div>); groups[k].forEach(function(p){ out.push(row(p, k+"-")); }); });
+    if(none.length){ out.push(<div key="sh-other" style={subHdr}>Other</div>); none.forEach(function(p){ out.push(row(p, "other-")); }); }
+    return out;
   }
 
   return <div style={{padding:"0 4px"}}>
@@ -5912,7 +5933,7 @@ function TradePartnersDirectory({ canEdit }) {
           </div>
         </div>
         {isOpen&&<div style={{border:"1px solid #e8e6df",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
-          {phases[ph].filter(function(p){return !p.archived;}).map(function(p){ return row(p); })}
+          {renderActive(phases[ph].filter(function(p){return !p.archived;}))}
           {canEdit&&phases[ph].filter(function(p){return p.archived;}).length>0&&<div onClick={function(){ setShowArch(function(prev){ var n={...prev}; n[ph]=!prev[ph]; return n; }); }} style={{padding:"9px 14px",borderTop:"1px solid #f0ede9",fontSize:12,fontWeight:600,color:"#8a8780",cursor:"pointer",background:"#faf9f7"}}>{showArch[ph]?"▾ Hide archived":"▸ Show "+phases[ph].filter(function(p){return p.archived;}).length+" archived"}</div>}
           {canEdit&&showArch[ph]&&phases[ph].filter(function(p){return p.archived;}).map(function(p){ return row(p); })}
         </div>}
@@ -5932,6 +5953,18 @@ function TradePartnersDirectory({ canEdit }) {
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {TP_TIERS.map(function(t){ var m=tierMeta(t); var sel=form.tier===t; return <button key={t} onClick={function(){setF("tier",sel?"":t);}} style={{width:40,height:34,borderRadius:7,border:"1.5px solid "+(sel?m.fg:"#e2e6ed"),background:sel?m.bg:"#fff",color:sel?m.fg:"#8896A8",fontWeight:800,fontSize:15,cursor:"pointer"}}>{t}</button>; })}
       </div>
+      <label style={flbl}>Subcategories <span style={{fontWeight:400,textTransform:"none",color:"#b0ada6"}}>(optional — e.g. Tile, Hardwood, LVP; a vendor can have several)</span></label>
+      {(form.subcategories||[]).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+        {(form.subcategories||[]).map(function(s,i){ return <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:"#eef1f5",color:"#3B4A5E",fontSize:12,fontWeight:600,padding:"4px 8px",borderRadius:14}}>{s}<span onClick={function(){rmSub(i);}} style={{cursor:"pointer",color:"#C0392B",fontWeight:800}}>×</span></span>; })}
+      </div>}
+      <div style={{display:"flex",gap:6}}>
+        <input value={subInput} onChange={function(e){setSubInput(e.target.value);}} onKeyDown={function(e){ if(e.key==="Enter"){ e.preventDefault(); addSub(subInput); } }} placeholder="Type a type and press Enter…" style={{...inp,flex:1}}/>
+        <button onClick={function(){addSub(subInput);}} style={{...btnSec,padding:"8px 14px"}}>Add</button>
+      </div>
+      {subSuggestions.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8,alignItems:"center"}}>
+        <span style={{fontSize:11,color:"#8a8780"}}>In this trade:</span>
+        {subSuggestions.map(function(s,i){ return <button key={i} onClick={function(){addSub(s);}} style={{border:"1px dashed #cdd6e2",background:"#fff",color:"#5b6472",borderRadius:14,padding:"3px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>+ {s}</button>; })}
+      </div>}
       <div style={{display:"flex",gap:10}}>
         <div style={{flex:1}}><label style={flbl}>Company Phone</label><input value={form.company_phone||""} onChange={function(e){setF("company_phone",e.target.value);}} style={inp}/></div>
         <div style={{flex:1}}><label style={flbl}>Company Email</label><input value={form.company_email||""} onChange={function(e){setF("company_email",e.target.value);}} style={inp}/></div>
