@@ -5835,10 +5835,10 @@ function TradePartnersDirectory({ canEdit }) {
   function load() { sbGet("trade_partners", "select=*&order=phase.asc,company_name.asc&limit=2000").then(function(r){ setPartners(r||[]); }); }
   useEffect(function(){ load(); }, []);
 
-  function openEdit(p) {
+  function openEdit(p, presetPhase) {
     setViewing(null); setDelConfirm(false);
     setForm(p ? {...p, secondary_contacts: Array.isArray(p.secondary_contacts)?p.secondary_contacts.slice():[], sched_contacts: Array.isArray(p.sched_contacts)?p.sched_contacts.slice():[]} :
-      {company_name:"",phase:"",tier:"",company_phone:"",company_email:"",primary_name:"",primary_cell:"",primary_email:"",sched_contacts:[],secondary_contacts:[],notes:"",archived:false});
+      {company_name:"",phase:presetPhase||"",tier:"",company_phone:"",company_email:"",primary_name:"",primary_cell:"",primary_email:"",sched_contacts:[],secondary_contacts:[],notes:"",archived:false});
   }
   function setF(k,v){ setForm(function(prev){ var n={...prev}; n[k]=v; return n; }); }
   function addRow(key){ setForm(function(prev){ var n={...prev}; n[key]=(prev[key]||[]).concat([{name:"",cell:"",email:""}]); return n; }); }
@@ -5906,7 +5906,10 @@ function TradePartnersDirectory({ canEdit }) {
         <div onClick={function(){ setOpenPhases(function(prev){ var n={...prev}; n[ph]=!prev[ph]; return n; }); }}
           style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:isOpen?"#faf8f5":"#fff",border:"1px solid #e8e6df",borderRadius:isOpen?"10px 10px 0 0":10,borderBottom:isOpen?"none":"1px solid #e8e6df",padding:"13px 14px",cursor:"pointer"}}>
           <div><span style={{color:"#8896A8",fontSize:12,marginRight:9}}>{isOpen?"▾":"▸"}</span><span style={{fontSize:13,fontWeight:800,color:"#243F81",letterSpacing:".04em",textTransform:"uppercase"}}>{ph}</span></div>
-          <div style={{fontSize:12,fontWeight:700,color:"#8896A8"}}>{phases[ph].filter(function(p){return !p.archived;}).length}</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {isOpen&&canEdit&&<button onClick={function(e){e.stopPropagation();openEdit(null,ph);}} style={{border:"1px solid #cdd6e2",background:"#fff",color:"#185FA5",borderRadius:7,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add</button>}
+            <div style={{fontSize:12,fontWeight:700,color:"#8896A8"}}>{phases[ph].filter(function(p){return !p.archived;}).length}</div>
+          </div>
         </div>
         {isOpen&&<div style={{border:"1px solid #e8e6df",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
           {phases[ph].filter(function(p){return !p.archived;}).map(function(p){ return row(p); })}
