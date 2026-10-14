@@ -65,7 +65,7 @@ async function sbGetCached(table, params) {
    attributed to each change order's parent project (type/location/lead source/salesperson).
    Returns an array of { amount, month, project_type, job_location, lead_source, salesperson }. ── */
 async function loadCORevenue(year) {
-  const cos = (await sbGet("change_orders", `select=sale_amount,date_decided,project_id&status=eq.Approved&date_decided=gte.${year}-01-01&date_decided=lte.${year}-12-31&limit=50000`)) || [];
+  const cos = (await sbGet("change_orders", `select=sale_amount,date_decided,project_id&status=eq.Approved&date_decided=gte.${year}-01-01&date_decided=lte.${year}-12-31&archived_at=is.null&limit=50000`)) || [];
   const pids = {};
   cos.forEach(c => { if (c.project_id) pids[c.project_id] = true; });
   const ids = Object.keys(pids);
@@ -360,11 +360,13 @@ const SkeletonCard = () => <div style={{background:"#fff",borderRadius:10,paddin
 const SkeletonMetric = () => <div style={{background:"#f7f6f3",borderRadius:10,padding:"14px 18px",flex:"1 1 130px"}}><Skel w="60%" h={10} mb={8} /><Skel w="45%" h={20} /></div>;
 
 /* ── Change Orders ── */
-function ChangeOrders({ projectId, contactId }) {
+function ChangeOrders({ projectId, contactId, authUser }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [editArchived, setEditArchived] = useState(false);
   const [form, setForm] = useState({ co_type: "", description: "", estimate_amount: "", sale_amount: "", status: "Estimated", date_estimated: todayStr(), date_decided: "", created_by: "" });
   const [saving, setSaving] = useState(false);
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -375,7 +377,7 @@ function ChangeOrders({ projectId, contactId }) {
     sbGet("change_orders", `project_id=eq.${projectId}&order=date_estimated.desc.nullslast`).then(r => { setOrders(r || []); setLoading(false); });
   }
 
-  function resetForm() { setForm({ co_type: "", description: "", estimate_amount: "", sale_amount: "", status: "Estimated", date_estimated: todayStr(), date_decided: "", created_by: "" }); setEditId(null); setShowAdd(false); }
+  function resetForm() { setForm({ co_type: "", description: "", estimate_amount: "", sale_amount: "", status: "Estimated", date_estimated: todayStr(), date_decided: "", created_by: "" }); setEditId(null); setEditArchived(false); setShowAdd(false); }
 
   function handleSave() {
     setSaving(true);
@@ -384,25 +386,55 @@ function ChangeOrders({ projectId, contactId }) {
     promise.then(() => { setSaving(false); resetForm(); loadOrders(); });
   }
 
-  function startEdit(co) { setForm({ co_type: co.co_type || "", description: co.description || "", estimate_amount: co.estimate_amount || "", sale_amount: co.sale_amount || "", status: co.status || "Estimated", date_estimated: co.date_estimated || "", date_decided: co.date_decided || "", created_by: co.created_by || "" }); setEditId(co.id); setShowAdd(true); }
+  function handleArchive() {
+    if (!editId || saving) return;
+    if (!window.confirm("Archive this change order? It will be hidden from lists and totals. You can unarchive it later.")) return;
+    setSaving(true);
+    var by = authUser && authUser.name ? authUser.name : null;
+    sbUpdate("change_orders", editId, { archived_at: new Date().toISOString(), archived_by: by }).then(function(r) {
+      setSaving(false);
+      if (!r) return;
+      resetForm();
+      loadOrders();
+      cacheClear();
+    });
+  }
 
-  const totalEst = orders.reduce((s, o) => s + (parseFloat(o.estimate_amount) || 0), 0);
-  const totalApproved = orders.filter(o => o.status === "Approved").reduce((s, o) => s + (parseFloat(o.sale_amount) || 0), 0);
-  const approved = orders.filter(o => o.status === "Approved").length;
+  function handleUnarchive() {
+    if (!editId || saving) return;
+    setSaving(true);
+    sbUpdate("change_orders", editId, { archived_at: null, archived_by: null }).then(function(r) {
+      setSaving(false);
+      if (!r) return;
+      resetForm();
+      loadOrders();
+      cacheClear();
+    });
+  }
+
+  function startEdit(co) { setForm({ co_type: co.co_type || "", description: co.description || "", estimate_amount: co.estimate_amount || "", sale_amount: co.sale_amount || "", status: co.status || "Estimated", date_estimated: co.date_estimated || "", date_decided: co.date_decided || "", created_by: co.created_by || "" }); setEditId(co.id); setEditArchived(!!co.archived_at); setShowAdd(true); }
+
+  const active = orders.filter(o => !o.archived_at);
+  const archived = orders.filter(o => o.archived_at);
+  const visible = showArchived ? active.concat(archived) : active;
+  const totalEst = active.reduce((s, o) => s + (parseFloat(o.estimate_amount) || 0), 0);
+  const totalApproved = active.filter(o => o.status === "Approved").reduce((s, o) => s + (parseFloat(o.sale_amount) || 0), 0);
+  const approved = active.filter(o => o.status === "Approved").length;
   const stColors = { Estimated: { bg: "#E6F1FB", fg: "#0C447C" }, Pending: { bg: "#FAEEDA", fg: "#633806" }, Approved: { bg: "#EAF3DE", fg: "#173404" }, Declined: { bg: "#FCEBEB", fg: "#791F1F" } };
 
   return (<div style={{ marginTop: 20 }}>
     <SH>Change orders</SH>
-    {orders.length > 0 && <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 13, color: "#6b6960" }}>
-      <span>{orders.length} change order{orders.length !== 1 ? "s" : ""}</span>
+    {active.length > 0 && <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 13, color: "#6b6960" }}>
+      <span>{active.length} change order{active.length !== 1 ? "s" : ""}</span>
       <span>{fmtC(totalEst)} estimated</span>
       <span style={{ color: "#173404", fontWeight: 600 }}>{fmtC(totalApproved)} approved</span>
-      {orders.length > 0 && <span>{approved}/{orders.length} converted ({orders.length > 0 ? Math.round((approved / orders.length) * 100) : 0}%)</span>}
+      {active.length > 0 && <span>{approved}/{active.length} converted ({active.length > 0 ? Math.round((approved / active.length) * 100) : 0}%)</span>}
     </div>}
-    {!loading && orders.map(co => (
-      <div key={co.id} onClick={() => startEdit(co)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0eeea", cursor: "pointer", fontSize: 13 }} onMouseEnter={e => { e.currentTarget.style.background = "#f7f6f3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+    {archived.length > 0 && <div onClick={function(){ setShowArchived(function(v){ return !v; }); }} style={{ fontSize: 12, fontWeight: 600, color: "#8a8780", cursor: "pointer", marginBottom: 8 }}>{showArchived ? "▾ Hide archived" : "▸ Show archived (" + archived.length + ")"}</div>}
+    {!loading && visible.map(co => (
+      <div key={co.id} onClick={() => startEdit(co)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0eeea", cursor: "pointer", fontSize: 13, opacity: co.archived_at ? 0.5 : 1 }} onMouseEnter={e => { e.currentTarget.style.background = "#f7f6f3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500 }}>{co.co_type || "Change order"}{co.description ? ` — ${co.description}` : ""}</div>
+          <div style={{ fontWeight: 500 }}>{co.co_type || "Change order"}{co.description ? ` — ${co.description}` : ""}{co.archived_at ? <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 700, color: "#8a8780", background: "#f0eeea", padding: "1px 6px", borderRadius: 4, textTransform: "uppercase", letterSpacing: ".04em" }}>Archived</span> : null}</div>
           <div style={{ fontSize: 12, color: "#8a8780", marginTop: 2 }}>{co.date_estimated ? fmtD(co.date_estimated) : ""}{co.created_by ? ` · ${co.created_by}` : ""}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -427,6 +459,8 @@ function ChangeOrders({ projectId, contactId }) {
         <Field label="Created by" half><select style={inpS} value={form.created_by} onChange={set("created_by")}><option value="">Select...</option>{ACTIVE_TEAM.map(t => <option key={t}>{t}</option>)}</select></Field>
       </div>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+        {editId && !editArchived && <button onClick={handleArchive} disabled={saving} style={{ ...btnSec, color: "#791F1F", borderColor: "#F5C4C4" }}>Archive</button>}
+        {editId && editArchived && <button onClick={handleUnarchive} disabled={saving} style={btnSec}>Unarchive</button>}
         <button onClick={resetForm} style={btnSec}>Cancel</button>
         <button onClick={handleSave} disabled={saving} style={btnP}>{saving ? "Saving..." : editId ? "Update" : "Add"}</button>
       </div>
@@ -757,7 +791,7 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
           {contact.cross_streets&&<div><span style={{color:"#8a8780",fontSize:12,fontWeight:600}}>Cross streets</span><br/>{contact.cross_streets}</div>}
         </div></>}
 
-        <ChangeOrders projectId={project.id} contactId={project.contact_id}/>
+        <ChangeOrders projectId={project.id} contactId={project.contact_id} authUser={authUser}/>
         <OrderTracker projectId={project.id} contactId={project.contact_id}/>
       </div>
     </div>);
@@ -833,7 +867,7 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
         </div>
         <button onClick={handleSave} disabled={saving} style={btnP}>{saving?"Saving...":"Save changes"}</button>
       </div>
-      <ChangeOrders projectId={project.id} contactId={project.contact_id}/>
+      <ChangeOrders projectId={project.id} contactId={project.contact_id} authUser={authUser}/>
       <OrderTracker projectId={project.id} contactId={project.contact_id}/>
       <ActivityLog activities={activities} projectId={project.id} contactId={project.contact_id} onAdd={e => setActivities(p => [e,...p])} defaultAuthor={authUser?authUser.name:TEAM[0]}/>
     </div>
@@ -3284,17 +3318,24 @@ function SalesHistory() {
 /* ── Open Change Orders Tab ── */
 function OpenChangeOrders({ onOpenProject }) {
   var [orders, setOrders] = useState([]);
+  var [archivedOrders, setArchivedOrders] = useState([]);
+  var [showArchived, setShowArchived] = useState(false);
   var [contacts, setContacts] = useState({});
   var [projects, setProjects] = useState({});
   var [loading, setLoading] = useState(true);
 
   useEffect(function() {
-    sbGet("change_orders", "status=in.(Estimated,Pending)&order=date_estimated.asc.nullslast&limit=500").then(function(cos) {
-      var all = cos || [];
+    Promise.all([
+      sbGet("change_orders", "status=in.(Estimated,Pending)&archived_at=is.null&order=date_estimated.asc.nullslast&limit=500"),
+      sbGet("change_orders", "status=in.(Estimated,Pending)&archived_at=not.is.null&order=date_estimated.asc.nullslast&limit=500")
+    ]).then(function(results) {
+      var all = results[0] || [];
+      var arch = results[1] || [];
       setOrders(all);
+      setArchivedOrders(arch);
 
       var pids = {}; var cids = {};
-      all.forEach(function(co) { if (co.project_id) pids[co.project_id] = true; if (co.contact_id) cids[co.contact_id] = true; });
+      all.concat(arch).forEach(function(co) { if (co.project_id) pids[co.project_id] = true; if (co.contact_id) cids[co.contact_id] = true; });
       var pidList = Object.keys(pids);
       var cidList = Object.keys(cids);
 
@@ -3331,14 +3372,20 @@ function OpenChangeOrders({ onOpenProject }) {
     return Math.floor((now - d) / 86400000);
   }
 
-  var enriched = orders.map(function(co) {
-    var days = daysSince(co.date_estimated);
-    var proj = projects[co.project_id] || {};
-    var cid = co.contact_id || proj.contact_id;
-    var contact = contacts[cid] || {};
-    var clientName = contact.first_name ? (contact.first_name + " " + (contact.last_name || "")).trim() : "";
-    return Object.assign({}, co, { days: days, projectName: proj.job_name || "", projectStage: proj.stage || "", clientName: clientName, staleLevel: days >= CO_OVERDUE ? "overdue" : days >= CO_WARN ? "warning" : "ok" });
-  });
+  function enrichList(list) {
+    return list.map(function(co) {
+      var days = daysSince(co.date_estimated);
+      var proj = projects[co.project_id] || {};
+      var cid = co.contact_id || proj.contact_id;
+      var contact = contacts[cid] || {};
+      var clientName = contact.first_name ? (contact.first_name + " " + (contact.last_name || "")).trim() : "";
+      return Object.assign({}, co, { days: days, projectName: proj.job_name || "", projectStage: proj.stage || "", clientName: clientName, staleLevel: days >= CO_OVERDUE ? "overdue" : days >= CO_WARN ? "warning" : "ok" });
+    });
+  }
+
+  var enriched = enrichList(orders);
+  var enrichedArchived = enrichList(archivedOrders);
+  var rows = showArchived ? enriched.concat(enrichedArchived) : enriched;
 
   var totalOpen = enriched.length;
   var totalPending = enriched.reduce(function(s, co) { return s + (parseFloat(co.estimate_amount) || 0); }, 0);
@@ -3349,7 +3396,10 @@ function OpenChangeOrders({ onOpenProject }) {
   var stColors = { Estimated: { bg: "#E6F1FB", fg: "#0C447C" }, Pending: { bg: "#FAEEDA", fg: "#633806" } };
 
   return (<div style={{display:"flex",flexDirection:"column",gap:16}}>
-    <div style={{fontSize:13,color:"#8a8780"}}>Open change orders awaiting client decision · {CO_WARN}d warning / {CO_OVERDUE}d overdue</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+      <div style={{fontSize:13,color:"#8a8780"}}>Open change orders awaiting client decision · {CO_WARN}d warning / {CO_OVERDUE}d overdue</div>
+      {archivedOrders.length > 0 && <button onClick={function(){ setShowArchived(function(v){ return !v; }); }} style={{background:"none",border:"none",padding:0,fontSize:12,fontWeight:600,color:"#8a8780",cursor:"pointer"}}>{showArchived ? "▾ Hide archived" : "▸ Show archived (" + archivedOrders.length + ")"}</button>}
+    </div>
 
     <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
       <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 130px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Open COs</div><div style={{fontSize:22,fontWeight:500}}>{totalOpen}</div></div>
@@ -3359,7 +3409,7 @@ function OpenChangeOrders({ onOpenProject }) {
       <div style={{background:warningCount>0?"#FAEEDA":"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 130px"}}><div style={{fontSize:11,fontWeight:500,color:warningCount>0?"#633806":"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Warning</div><div style={{fontSize:22,fontWeight:500,color:warningCount>0?"#633806":"inherit"}}>{warningCount}</div></div>
     </div>
 
-    {totalOpen === 0 ? <div style={{padding:40,textAlign:"center",color:"#b0ada6",fontSize:14}}>No open change orders. All caught up!</div> :
+    {rows.length === 0 ? <div style={{padding:40,textAlign:"center",color:"#b0ada6",fontSize:14}}>No open change orders. All caught up!</div> :
     <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:700}}>
         <thead><tr style={{borderBottom:"2px solid #e8e6df"}}>
@@ -3372,13 +3422,14 @@ function OpenChangeOrders({ onOpenProject }) {
           <th style={{padding:"8px 10px",textAlign:"center",fontSize:12,fontWeight:500,color:"#8a8780"}}>Status</th>
         </tr></thead>
         <tbody>
-          {enriched.map(function(co) {
+          {rows.map(function(co) {
+            var isArchived = !!co.archived_at;
             var rowBg = co.staleLevel === "overdue" ? "#FCEBEB44" : co.staleLevel === "warning" ? "#FAEEDA44" : "transparent";
             var borderColor = co.staleLevel === "overdue" ? "#E8C4C4" : co.staleLevel === "warning" ? "#E8D9B8" : "#f0eeea";
             var dayColor = co.staleLevel === "overdue" ? "#791F1F" : co.staleLevel === "warning" ? "#633806" : "#6b6960";
             var sc = stColors[co.status] || stColors.Estimated;
-            return <tr key={co.id} onClick={function(){if(co.project_id && projects[co.project_id]) onOpenProject(projects[co.project_id]);}} style={{borderBottom:"1px solid "+borderColor,background:rowBg,cursor:"pointer"}} onMouseEnter={function(e){e.currentTarget.style.opacity="0.85";}} onMouseLeave={function(e){e.currentTarget.style.opacity="1";}}>
-              <td style={{padding:"10px 10px"}}><div style={{fontWeight:500}}>{co.clientName || "—"}</div><div style={{fontSize:12,color:"#8a8780",marginTop:1}}>{co.projectName}</div></td>
+            return <tr key={co.id} onClick={function(){if(co.project_id && projects[co.project_id]) onOpenProject(projects[co.project_id]);}} style={{borderBottom:"1px solid "+borderColor,background:rowBg,cursor:"pointer",opacity:isArchived?0.5:1}} onMouseEnter={function(e){e.currentTarget.style.opacity=isArchived?"0.4":"0.85";}} onMouseLeave={function(e){e.currentTarget.style.opacity=isArchived?"0.5":"1";}}>
+              <td style={{padding:"10px 10px"}}><div style={{fontWeight:500}}>{co.clientName || "—"}{isArchived ? <span style={{marginLeft:7,fontSize:9,fontWeight:700,color:"#8a8780",background:"#f0eeea",padding:"1px 6px",borderRadius:4,textTransform:"uppercase",letterSpacing:".04em"}}>Archived</span> : null}</div><div style={{fontSize:12,color:"#8a8780",marginTop:1}}>{co.projectName}</div></td>
               <td style={{padding:"10px 10px",color:"#6b6960",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{co.description || "—"}</td>
               <td style={{padding:"10px 10px",color:"#6b6960"}}>{co.co_type || "—"}</td>
               <td style={{padding:"10px 10px",textAlign:"right",fontWeight:600}}>{co.estimate_amount ? fmtC(co.estimate_amount) : "—"}</td>
@@ -3617,7 +3668,7 @@ function LifeAndDeath({ onOpenProject }) {
     Promise.all([
       sbGet("projects", `select=${DASH_COLS}&lead_date=gte.${year}-01-01&lead_date=lte.${year}-12-31&limit=50000`),
       sbGet("goals", `year=eq.${year}`),
-      sbGet("change_orders", `date_estimated=gte.${year}-01-01&date_estimated=lte.${year}-12-31&limit=10000`),
+      sbGet("change_orders", `date_estimated=gte.${year}-01-01&date_estimated=lte.${year}-12-31&archived_at=is.null&limit=10000`),
       sbGet("projects", `select=${DASH_COLS}&stage=eq.Sold&date_sold=gte.${year}-01-01&date_sold=lte.${year}-12-31&limit=50000`),
       loadCORevenue(year)
     ]).then(([projects, goalsData, changeOrders, soldProjects, coList]) => {
