@@ -45,6 +45,11 @@ describe("LMS client no longer reads crm_users", () => {
       assert.equal(source.includes('action: "login"') || source.includes("action: \"login\""), true);
       assert.equal(source.includes('action: "whoami"') || source.includes("action: \"whoami\""), true);
       assert.equal(source.includes('action: "names"') || source.includes("action: \"names\""), true);
+      assert.match(source, /if \(res\.status === 401\) \{\s*setError\("Invalid PIN\."\);/);
+      assert.match(source, /if \(res\.status === 429\) \{[\s\S]*?Too many attempts/);
+      const invalidAt = source.indexOf('setError("Invalid PIN.")');
+      const unavailableAt = source.indexOf('setError("Sign-in is unavailable right now.")', invalidAt);
+      assert.equal(invalidAt > 0 && unavailableAt > invalidAt, true);
     }
   });
 });

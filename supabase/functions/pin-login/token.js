@@ -13,6 +13,7 @@
 // tlg-scheduler verifies with the same secret (Vercel env STAFF_SESSION_SECRET)
 // or calls pin-login action "whoami" / "session", which re-reads the row.
 
+import { Buffer } from "node:buffer";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const TOKEN_ISS = "tlg-staff-auth";

@@ -5450,7 +5450,11 @@ function LoginScreen({ onLogin }) {
         setError("Too many attempts. Try again in");
         return;
       }
-      setError("Invalid PIN.");
+      if (res.status === 401) {
+        setError("Invalid PIN.");
+        return;
+      }
+      setError("Sign-in is unavailable right now.");
     }).catch(function() {
       setSubmitting(false);
       setPin("");
