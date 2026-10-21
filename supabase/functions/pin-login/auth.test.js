@@ -232,6 +232,8 @@ describe("cors", () => {
     assert.equal(isAllowedOrigin("https://tlg-crm-nine.vercel.app"), true);
     assert.equal(isAllowedOrigin("https://tlg-scheduler.vercel.app"), true);
     assert.equal(isAllowedOrigin("https://tlg-crm-nine-git-secure-pin-login-team.vercel.app"), true);
+    assert.equal(isAllowedOrigin("https://tlg-50axbweq0-geoff-devs-projects.vercel.app"), true);
+    assert.equal(isAllowedOrigin("https://tlg-50axbweq0-other-team.vercel.app"), false);
     assert.equal(isAllowedOrigin("http://localhost:5173"), true);
     assert.equal(isAllowedOrigin("https://evil.example"), false);
     assert.equal(isAllowedOrigin("https://tlg-crm-nine.vercel.app.evil.com"), false);

@@ -7,7 +7,7 @@ const EXACT_ORIGINS = new Set([
   "http://127.0.0.1:4173",
 ]);
 
-const PREVIEW_ORIGIN = /^https:\/\/(?:tlg-crm-nine|tlg-scheduler)-[a-z0-9-]+\.vercel\.app$/;
+const PREVIEW_ORIGIN = /^https:\/\/(?:(?:tlg-crm-nine|tlg-scheduler)-[a-z0-9-]+\.vercel\.app|tlg-[a-z0-9-]+-geoff-devs-projects\.vercel\.app)$/;
 
 export function isAllowedOrigin(origin) {
   if (!origin) return false;
