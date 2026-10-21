@@ -7,3 +7,8 @@ project_id = "dwkvdelvnmvniewakzoq"
 
 [functions.sold-create]
 verify_jwt = false
+
+# PIN login is called by the browser before any Supabase user session exists.
+# The function checks the staff PIN itself and signs its own HMAC token.
+[functions.pin-login]
+verify_jwt = false
