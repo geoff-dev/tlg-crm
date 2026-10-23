@@ -144,7 +144,7 @@ describe("project edit form wiring", () => {
     const secondaryIdx = detail.indexOf('label="Secondary lead source"');
     const salespersonIdx = detail.indexOf('label="Salesperson"', secondaryIdx);
     assert.equal(leadIdx > 0 && secondaryIdx > leadIdx && salespersonIdx > secondaryIdx, true);
-    assert.equal(detail.indexOf('label="Secondary lead source"', secondaryIdx + 1), -1);
+    assert.equal((detail.match(/<Field label="Secondary lead source"/g) || []).length, 1);
     assert.match(detail, /projectFormFromRecord\(r\[0\]\)/);
     assert.match(detail, /leadSourceUpdateFields\(form\)/);
     assert.match(detail, /lead_source_secondary:leadFields\.lead_source_secondary/);
