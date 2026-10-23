@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { lockSeconds, postStaffAuth, readStoredSession, sessionFromLogin, sessionFromWhoami } from "./staffSession.js";
+import { LeadSourceSelect, leadSourceUpdateFields, projectFormFromRecord } from "./leadSource.js";
 
 /* ── Supabase config ── */
 const SB_URL = "https://dwkvdelvnmvniewakzoq.supabase.co";
@@ -739,7 +740,7 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
     setLoading(true);
     const promises = [];
     // Load FULL project record (list/pipeline only pass partial columns)
-    promises.push(sbGet("projects", `id=eq.${project.id}`).then(r => { if(r&&r[0]) setForm(r[0]); }));
+    promises.push(sbGet("projects", `id=eq.${project.id}`).then(r => { if(r&&r[0]) setForm(projectFormFromRecord(r[0])); }));
     if (project.contact_id) promises.push(sbGetCached("contacts",`id=eq.${project.contact_id}`).then(r => { if(r[0]) setContact(r[0]); }));
     promises.push(sbGet("activity_log",`order=activity_date.desc&or=(project_id.eq.${project.id},contact_id.eq.${project.contact_id||"null"})&limit=200`).then(r => setActivities(r||[])));
     Promise.all(promises).then(() => setLoading(false));
@@ -747,8 +748,9 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
 
   const handleSave = () => {
     setSaving(true); cacheClear("projects");
+    var leadFields = leadSourceUpdateFields(form);
     var updateData = {
-      stage:form.stage, project_type:form.project_type||null, lead_source:form.lead_source||null, salesperson:form.salesperson||null,
+      stage:form.stage, project_type:form.project_type||null, lead_source:leadFields.lead_source, lead_source_secondary:leadFields.lead_source_secondary, salesperson:form.salesperson||null,
       job_location:form.job_location||null, lead_date:form.lead_date||null, job_name:form.job_name||null,
       estimate_amount:form.estimate_amount?parseFloat(form.estimate_amount):null, sale_amount:form.sale_amount?parseFloat(form.sale_amount):null,
       confidence:form.confidence?parseInt(form.confidence):null, date_sold:form.date_sold||null, date_lost:form.date_lost||null,
@@ -828,7 +830,8 @@ function ProjectDetail({ project, onBack, onSaved, onOpenContact, authUser, isPr
         <Field label="Job name" half><input style={inpS} value={form.job_name||""} onChange={set("job_name")}/></Field>
         <Field label="Stage" half><select style={inpS} value={form.stage||""} onChange={set("stage")}>{STAGES.map(s=><option key={s}>{s}</option>)}</select></Field>
         <Field label="Project type" half><select style={inpS} value={form.project_type||""} onChange={set("project_type")}><option value="">Select...</option>{PTYPES.map(t=><option key={t}>{t}</option>)}</select></Field>
-        <Field label="Lead source" half><select style={inpS} value={form.lead_source||""} onChange={set("lead_source")}><option value="">Select...</option>{LSOURCES.map(s=><option key={s}>{s}</option>)}</select></Field>
+        <Field label="Lead source" half><LeadSourceSelect style={inpS} label="Lead source" value={form.lead_source||""} sources={LSOURCES} emptyLabel="Select..." onChange={set("lead_source")}/></Field>
+        <Field label="Secondary lead source" half><LeadSourceSelect style={inpS} label="Secondary lead source" value={form.lead_source_secondary||""} sources={LSOURCES} emptyLabel="None" onChange={set("lead_source_secondary")}/></Field>
         <Field label="Salesperson" half><select style={inpS} value={form.salesperson||""} onChange={set("salesperson")}><option value="">Select...</option>{ACTIVE_TEAM.map(s=><option key={s}>{s}</option>)}</select></Field>
         <Field label="Estimate $" half><DollarInput style={inpS} value={form.estimate_amount} onChange={function(v){setForm(function(f){return Object.assign({},f,{estimate_amount:v});});}} /></Field>
         <Field label="Estimate date" half><input type="date" style={inpS} value={form.estimate_date||""} onChange={set("estimate_date")}/></Field>

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test supabase/functions/sold-create/mapper.test.js supabase/functions/pin-login/*.test.js src/staffSession.test.js"
+    "test": "node --test supabase/functions/sold-create/mapper.test.js supabase/functions/pin-login/*.test.js src/staffSession.test.js src/leadSource.test.js"
   },
   "dependencies": {
     "react": "^18.2.0",
