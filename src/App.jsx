@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { lockSeconds, postStaffAuth, readStoredSession, sessionFromLogin, sessionFromWhoami } from "./staffSession.js";
+import { VIEWER_CONSOLE_TILES, canOpenRecords, canShowProjectView, consoleSectionVisible, homeTileVisible, isLimitedRole, openRecord, showsManagementConsole, showsNewButtons, visibleHomeTiles } from "./viewerAccess.js";
 
 /* ── Supabase config ── */
 const SB_URL = "https://dwkvdelvnmvniewakzoq.supabase.co";
@@ -1073,7 +1074,7 @@ function PipelineView({ onOpenProject, readOnly }) {
               const stale = getStaleStatus(stage, actDays);
               const cardBg = stale === "overdue" ? "#FDE8E8" : stale === "warning" ? "#FFF4E0" : "#fff";
               const cardBorder = stale === "overdue" ? "2px solid #E24B4A" : stale === "warning" ? "2px solid #EF9F27" : "1px solid #e8e6df";
-              return (<div key={p.id} onClick={()=>onOpenProject(p)} style={{background:cardBg,borderRadius:8,padding:"8px 10px",border:cardBorder,cursor:"pointer",boxShadow:"0 1px 2px rgba(0,0,0,0.03)",transition:"box-shadow 0.15s",minWidth:155,maxWidth:190,flexShrink:0}} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 3px 8px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.03)";}}>
+              return (<div key={p.id} onClick={()=>{ if(readOnly && !onOpenProject) return; if(onOpenProject) onOpenProject(p); }} style={{background:cardBg,borderRadius:8,padding:"8px 10px",border:cardBorder,cursor:onOpenProject?"pointer":"default",boxShadow:"0 1px 2px rgba(0,0,0,0.03)",transition:"box-shadow 0.15s",minWidth:155,maxWidth:190,flexShrink:0}} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 3px 8px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.03)";}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:1}}>
                   <div style={{fontWeight:600,fontSize:12,lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,color:stale==="overdue"?"#791F1F":stale==="warning"?"#633806":"inherit"}}>{p.job_name||"—"}</div>
                   <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,background:lsc.bg,color:lsc.fg,fontWeight:700,marginLeft:4,flexShrink:0}}>{ls}</span>
@@ -1100,7 +1101,7 @@ function PipelineView({ onOpenProject, readOnly }) {
     </div>
     {soldRecent.length>0&&<div style={{marginTop:16}}>
       <div style={{fontSize:13,fontWeight:700,color:"#6b6960",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Recent wins</div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{soldRecent.map(p=><div key={p.id} onClick={()=>onOpenProject(p)} style={{background:"#EAF3DE",borderRadius:10,padding:"8px 14px",cursor:"pointer",border:"1px solid #d4e8c2"}}><div style={{fontWeight:600,fontSize:13,color:"#173404"}}>{p.job_name||"—"}</div><div style={{fontSize:12,color:"#27500A"}}>{p.sale_amount?fmtC(p.sale_amount):""}{p.date_sold?` · ${fmtD(p.date_sold)}`:""}</div></div>)}</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{soldRecent.map(p=><div key={p.id} onClick={()=>{ if(readOnly && !onOpenProject) return; if(onOpenProject) onOpenProject(p); }} style={{background:"#EAF3DE",borderRadius:10,padding:"8px 14px",cursor:onOpenProject?"pointer":"default",border:"1px solid #d4e8c2"}}><div style={{fontWeight:600,fontSize:13,color:"#173404"}}>{p.job_name||"—"}</div><div style={{fontSize:12,color:"#27500A"}}>{p.sale_amount?fmtC(p.sale_amount):""}{p.date_sold?` · ${fmtD(p.date_sold)}`:""}</div></div>)}</div>
     </div>}
   </div>);
 }
@@ -1126,7 +1127,7 @@ function DrillDown({ title, projects, contacts, onClose, onOpenProject }) {
     <div style={{fontSize:13,color:"#8a8780",marginBottom:12}}>{projects.length} projects · {fmtC(projects.reduce((s,p)=>s+(parseFloat(p.sale_amount)||0),0))} revenue</div>
     {projects.map(p => {
       const c = contacts[p.contact_id]; const cName = c ? `${c.first_name||""} ${c.last_name||""}`.trim() : "";
-      return (<div key={p.id} onClick={()=>onOpenProject&&onOpenProject(p)} style={{padding:"10px 0",borderBottom:"1px solid #f0eeea",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="#f7f6f3";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+      return (<div key={p.id} onClick={()=>onOpenProject&&onOpenProject(p)} style={{padding:"10px 0",borderBottom:"1px solid #f0eeea",cursor:onOpenProject?"pointer":"default"}} onMouseEnter={e=>{if(onOpenProject)e.currentTarget.style.background="#f7f6f3";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontWeight:500,fontSize:14}}>{cName||p.job_name||"—"}</div><div style={{fontSize:12,color:"#8a8780"}}>{p.project_type||""}{p.lead_date?` · ${fmtD(p.lead_date)}`:""}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1513,7 +1514,7 @@ function Dashboard({ onOpenProject }) {
               var pastDue = p.forecast_date && new Date(p.forecast_date + "T00:00:00") < now;
               var ct = contacts[p.contact_id];
               var cName = ct ? (ct.first_name || "") + " " + (ct.last_name || "") : "";
-              return <tr key={p.id} style={{borderBottom:"0.5px solid #f0eeea",cursor:"pointer",background:pastDue?"#FCEBEB22":i%2===0?"transparent":"#f7f6f330"}} onClick={function(){onOpenProject(p);}} onMouseEnter={function(e){e.currentTarget.style.opacity="0.85";}} onMouseLeave={function(e){e.currentTarget.style.opacity="1";}}>
+              return <tr key={p.id} style={{borderBottom:"0.5px solid #f0eeea",cursor:onOpenProject?"pointer":"default",background:pastDue?"#FCEBEB22":i%2===0?"transparent":"#f7f6f330"}} onClick={function(){if(onOpenProject)onOpenProject(p);}} onMouseEnter={function(e){if(onOpenProject)e.currentTarget.style.opacity="0.85";}} onMouseLeave={function(e){e.currentTarget.style.opacity="1";}}>
                 <td style={{padding:"8px",fontWeight:500}}><div>{p.job_name||"—"}</div>{cName.trim()&&<div style={{fontSize:11,color:"#8a8780"}}>{cName}</div>}</td>
                 <td style={{padding:"8px",textAlign:"right",color:"#6b6960"}}>{p.estimate_amount?fmtC(p.estimate_amount):"—"}</td>
                 <td style={{padding:"8px",textAlign:"right",fontWeight:600,color:"#185FA5"}}>{fmtC(p.forecast_amount)}</td>
@@ -2395,7 +2396,7 @@ function Scorecard({ onOpenProject }) {
 
 /* ── Management Console (Hidden) ── */
 var STAGE_WEIGHTS = { "Not Yet Contacted": 0.05, "Discovered": 0.10, "Qualified": 0.20, "Visited": 0.35, "Estimated": 0.50, "Presented": 0.65, "Revised": 0.75, "Prepare To Close": 0.90 };
-function ManagementConsole({ onOpenProject }) {
+function ManagementConsole({ onOpenProject, allowed, readOnly }) {
   var [data, setData] = useState(null);
   var [loading, setLoading] = useState(true);
   var [section, setSection] = useState("mchome");
@@ -2516,7 +2517,13 @@ function ManagementConsole({ onOpenProject }) {
     });
   }, []);
 
+  useEffect(function() {
+    if (allowed && section !== "mchome" && !consoleSectionVisible(allowed, section)) setSection("mchome");
+  }, [section, allowed]);
+
   if (loading || !data) return <div style={{padding:20,color:"#8a8780"}}>Loading Management Console...</div>;
+
+  var rowOpen = readOnly ? undefined : onOpenProject;
 
   var thS = { padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 500, color: "#8a8780", whiteSpace: "nowrap" };
   var thL = Object.assign({}, thS, { textAlign: "left" });
@@ -2559,8 +2566,8 @@ function ManagementConsole({ onOpenProject }) {
         {id:"changeorders",label:"Change Orders",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>;}},
         {id:"stale",label:"Stale Lead Analysis",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;}},
         {id:"_estimator",label:"Estimator",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAE9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/><circle cx="16" cy="16" r="2"/></svg>;}},
-      ].map(function(item) {
-        return <div key={item.id} onClick={function(){if(item.external){window.open(item.external,"_blank");}else{setSection(item.id);}}} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s"}}
+      ].filter(function(item){ return !allowed || allowed.indexOf(item.id) >= 0; }).map(function(item) {
+        return <div key={item.id} onClick={function(){ if(allowed && allowed.indexOf(item.id)<0) return; if(item.external){window.open(item.external,"_blank");}else{setSection(item.id);}}} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s"}}
         onMouseEnter={function(e){e.currentTarget.style.borderColor="#243F81";e.currentTarget.style.boxShadow="0 2px 8px rgba(36,63,129,0.1)";}}
         onMouseLeave={function(e){e.currentTarget.style.borderColor="#e8e6df";e.currentTarget.style.boxShadow="none";}}>
           <div style={{width:44,height:44,margin:"0 auto 10px",borderRadius:12,background:"#E6F1FB",display:"flex",alignItems:"center",justifyContent:"center"}}>{item.icon()}</div>
@@ -2568,7 +2575,7 @@ function ManagementConsole({ onOpenProject }) {
         </div>;
       })}
     </div>}
-    {section==="mchome"&&<div>
+    {section==="mchome"&&!allowed&&<div>
       <div style={{fontSize:11,fontWeight:700,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:8,marginBottom:8}}>SEO & Analytics</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480}}>
         <div onClick={function(){window.open("https://search.google.com/search-console","_blank");}} style={{background:"#fff",borderRadius:14,padding:"20px 10px 16px",textAlign:"center",cursor:"pointer",border:"1px solid #e8e6df",transition:"all 0.15s",position:"relative"}}
@@ -2597,7 +2604,7 @@ function ManagementConsole({ onOpenProject }) {
     </div>}
 
     {/* === SALESPERSON PERFORMANCE === */}
-    {section === "performance" && <div>
+    {section === "performance" && consoleSectionVisible(allowed, "performance") && <div>
       <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:800}}>
           <thead><tr style={{borderBottom:"2px solid #e8e6df"}}>
@@ -2629,7 +2636,7 @@ function ManagementConsole({ onOpenProject }) {
     </div>}
 
     {/* === PIPELINE FORECAST === */}
-    {section === "pipeline" && <div>
+    {section === "pipeline" && consoleSectionVisible(allowed, "pipeline") && <div>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
         <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Pipeline (est.)</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(totalPipeEst)}</div></div>
         <div style={{background:"#E6F1FB",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#0C447C",textTransform:"uppercase",letterSpacing:"0.06em"}}>Forecast-adjusted</div><div style={{fontSize:22,fontWeight:500,color:"#0C447C"}}>{fmtC(totalFcst)}</div></div>
@@ -2689,7 +2696,7 @@ function ManagementConsole({ onOpenProject }) {
     </div>}
 
     {/* === ESTIMATE VS SALE === */}
-    {section === "variance" && <div>
+    {section === "variance" && consoleSectionVisible(allowed, "variance") && <div>
       {(function() {
         var avgDiff = data.varianceData.length > 0 ? Math.round(data.varianceData.reduce(function(s,v){return s+v.diff;},0) / data.varianceData.length) : 0;
         var avgPct = data.varianceData.length > 0 ? Math.round(data.varianceData.reduce(function(s,v){return s+v.pct;},0) / data.varianceData.length) : 0;
@@ -2711,7 +2718,7 @@ function ManagementConsole({ onOpenProject }) {
               </tr></thead>
               <tbody>{data.varianceData.sort(function(a,b){return b.diff-a.diff;}).map(function(v,i) {
                 var diffColor = v.diff > 0 ? "#173404" : v.diff < 0 ? "#791F1F" : "#6b6960";
-                return <tr key={v.project.id} onClick={function(){onOpenProject(v.project);}} style={{borderBottom:"0.5px solid #f0eeea",cursor:"pointer",background:i%2===0?"transparent":"#f7f6f330"}} onMouseEnter={function(e){e.currentTarget.style.opacity="0.85";}} onMouseLeave={function(e){e.currentTarget.style.opacity="1";}}>
+                return <tr key={v.project.id} onClick={function(){ if(rowOpen) rowOpen(v.project); }} style={{borderBottom:"0.5px solid #f0eeea",cursor:rowOpen?"pointer":"default",background:i%2===0?"transparent":"#f7f6f330"}} onMouseEnter={function(e){if(rowOpen)e.currentTarget.style.opacity="0.85";}} onMouseLeave={function(e){e.currentTarget.style.opacity="1";}}>
                   <td style={Object.assign({},tdL,{fontWeight:500})}>{v.project.job_name||"—"}</td>
                   <td style={tdS}>{fmtC(v.est)}</td>
                   <td style={tdBold}>{fmtC(v.sale)}</td>
@@ -2725,12 +2732,12 @@ function ManagementConsole({ onOpenProject }) {
       })()}
     </div>}
 
-    {section === "sops" && <SOPViewer/>}
+    {section === "sops" && consoleSectionVisible(allowed, "sops") && <SOPViewer/>}
 
     {/* === STALE COMPLIANCE === */}
-    {section === "pipeline" && <ForecastView/>}
-    {section === "changeorders" && <OpenChangeOrders onOpenProject={onOpenProject}/>}
-    {section === "stale" && <div>
+    {section === "pipeline" && consoleSectionVisible(allowed, "pipeline") && <ForecastView/>}
+    {section === "changeorders" && consoleSectionVisible(allowed, "changeorders") && <OpenChangeOrders onOpenProject={rowOpen}/>}
+    {section === "stale" && consoleSectionVisible(allowed, "stale") && <div>
       <div style={{overflowX:"auto",border:"0.5px solid #e8e6df",borderRadius:10}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
           <thead><tr style={{borderBottom:"2px solid #e8e6df"}}>
@@ -2758,7 +2765,7 @@ function ManagementConsole({ onOpenProject }) {
     </div>}
 
     {/* === LOST DEAL ANALYSIS === */}
-    {section === "lost" && <div>
+    {section === "lost" && consoleSectionVisible(allowed, "lost") && <div>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}}>
         <div style={{background:"#FCEBEB",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#791F1F",textTransform:"uppercase",letterSpacing:"0.06em"}}>Total lost {curYear}</div><div style={{fontSize:22,fontWeight:500,color:"#791F1F"}}>{data.lost.length}</div></div>
         <div style={{background:"#f7f6f3",borderRadius:10,padding:"12px 18px",flex:"1 1 140px"}}><div style={{fontSize:11,fontWeight:500,color:"#8a8780",textTransform:"uppercase",letterSpacing:"0.06em"}}>Lost revenue (est.)</div><div style={{fontSize:22,fontWeight:500}}>{fmtC(data.lost.reduce(function(s,p){return s+(parseFloat(p.estimate_amount)||0);},0))}</div></div>
@@ -2816,11 +2823,11 @@ function ManagementConsole({ onOpenProject }) {
       </div>
     </div>}
 
-    {section === "goals" && <GoalsSettings />}
-    {section === "scorecard" && <Scorecard onOpenProject={onOpenProject} />}
-    {section === "thermometers" && <GoalThermometers />}
-    {section === "reports" && <Reports onOpenProject={onOpenProject} onOpenContact={function(){}} />}
-    {section === "history" && <SalesHistory />}
+    {section === "goals" && consoleSectionVisible(allowed, "goals") && <GoalsSettings />}
+    {section === "scorecard" && consoleSectionVisible(allowed, "scorecard") && <Scorecard onOpenProject={rowOpen} />}
+    {section === "thermometers" && consoleSectionVisible(allowed, "thermometers") && <GoalThermometers />}
+    {section === "reports" && consoleSectionVisible(allowed, "reports") && <Reports onOpenProject={rowOpen} onOpenContact={function(){}} />}
+    {section === "history" && consoleSectionVisible(allowed, "history") && <SalesHistory />}
   </div>);
 }
 
@@ -6553,9 +6560,11 @@ function AuthenticatedApp({ authUser, onLogout }) {
   var headerClickRef = useRef({count:0,timer:null});
   const [viewAsRole, setViewAsRole] = useState(null);
   const effectiveRole = viewAsRole || authUser.role;
+  const isLimited = isLimitedRole(effectiveRole);
   const mgmtAccess = (effectiveRole === "Owner" || effectiveRole === "Admin");
   const isProduction = effectiveRole === "Production";
   const isSales = effectiveRole === "Sales";
+  const showView = (id) => canShowProjectView(effectiveRole, id);
 
   const [schedulerProjectIds, setSchedulerProjectIds] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -6675,13 +6684,14 @@ function AuthenticatedApp({ authUser, onLogout }) {
   };
   const effectiveCount = totalCount || (projects.length === PAGE_SIZE ? (page+2)*PAGE_SIZE : (page*PAGE_SIZE)+projects.length);
   const totalPages = Math.ceil(effectiveCount/PAGE_SIZE);
-  const openProject = p => setDetailView({type:"project",data:p});
-  const openContact = c => setDetailView({type:"contact",data:c});
+  const openProject = p => { openRecord(effectiveRole, p, setDetailView, "project"); };
+  const openContact = c => { openRecord(effectiveRole, c, setDetailView, "contact"); };
+  const showDetail = !!(detailView && canOpenRecords(effectiveRole));
 
   var detailElement = null;
-  if (detailView) {
-    if (detailView.type==="project") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ProjectDetail project={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){cacheClear("projects");loadProjects();}} onOpenContact={function(c){setDetailView({type:"contact",data:c});}} authUser={authUser} isProduction={isProduction}/></div>;
-    if (detailView.type==="contact") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ContactDetail contact={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){}} onOpenProject={function(p){setDetailView({type:"project",data:p});}} authUser={authUser}/></div>;
+  if (showDetail) {
+    if (detailView.type==="project") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ProjectDetail project={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){cacheClear("projects");loadProjects();}} onOpenContact={openContact} authUser={authUser} isProduction={isProduction}/></div>;
+    if (detailView.type==="contact") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ContactDetail contact={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){}} onOpenProject={openProject} authUser={authUser}/></div>;
   }
 
   const tableCols = [{k:"client",l:"Client"},{k:"stage",l:"Stage"},{k:"project_type",l:"Type"},{k:"confidence",l:"Confidence"},{k:"lead_score",l:"Lead Score"},{k:"lead_source",l:"Source"},{k:"home_value",l:"Home Value"},{k:quickView==="sold"?"date_sold":"lead_date",l:quickView==="sold"?"Date sold":"Lead date"},{k:"sale_amount",l:"Sale $"}];
@@ -6690,21 +6700,21 @@ function AuthenticatedApp({ authUser, onLogout }) {
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginBottom:16,padding:"0 4px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <h1 onClick={function(){if(!mgmtAccess)return;var ref=headerClickRef.current;ref.count++;clearTimeout(ref.timer);if(ref.count>=3){ref.count=0;setProjectView("hiddenconsole");setSection("projects");}else{ref.timer=setTimeout(function(){ref.count=0;},600);}}} style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:"-0.03em",color:"#1a1a1a",cursor:"default",userSelect:"none"}}>TLG<span style={{color:"#185FA5",marginLeft:4}}>LMS</span></h1>
-        {projectView!=="home"&&!detailView&&<button onClick={function(){setProjectView("home");setSection("projects");setDetailView(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#185FA5",fontWeight:600,padding:"4px 8px"}}>Home</button>}
+        {projectView!=="home"&&!showDetail&&<button onClick={function(){setProjectView("home");setSection("projects");setDetailView(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#185FA5",fontWeight:600,padding:"4px 8px"}}>Home</button>}
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <span style={{fontSize:12,color:"#8a8780",fontWeight:500}}>{authUser.name}</span>
-        {authUser.role==="Owner"&&<select value={viewAsRole||""} onChange={function(e){setViewAsRole(e.target.value||null);setProjectView("home");}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #d0cec7",fontSize:11,color:"#6b6960",cursor:"pointer",background:"#fff"}}><option value="">My view</option><option value="Admin">View as Admin</option><option value="Sales">View as Sales</option><option value="Production">View as Production</option></select>}
+        {authUser.role==="Owner"&&<select value={viewAsRole||""} onChange={function(e){setViewAsRole(e.target.value||null);setProjectView("home");}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #d0cec7",fontSize:11,color:"#6b6960",cursor:"pointer",background:"#fff"}}><option value="">My view</option><option value="Admin">View as Admin</option><option value="Sales">View as Sales</option><option value="Production">View as Production</option><option value="Viewer">View as Viewer</option></select>}
         <button onClick={onLogout} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #d0cec7",background:"#fff",cursor:"pointer",fontSize:12,color:"#8a8780",fontWeight:500}}>Log out</button>
       </div>
     </div>
 
     {detailElement}
 
-    <div style={{display:detailView?"none":"block"}}>
+    <div style={{display:showDetail?"none":"block"}}>
 
-    {showNewProject&&<NewProjectModal onClose={()=>setShowNewProject(false)} onCreated={p=>{setShowNewProject(false);cacheClear();openProject(p);}}/>}
-    {showNewContact&&<NewContactModal onClose={()=>setShowNewContact(false)} onCreated={c=>{setShowNewContact(false);cacheClear();openContact(c);}}/>}
+    {showNewProject&&showsNewButtons(effectiveRole)&&<NewProjectModal onClose={()=>setShowNewProject(false)} onCreated={p=>{setShowNewProject(false);cacheClear();openProject(p);}}/>}
+    {showNewContact&&showsNewButtons(effectiveRole)&&<NewContactModal onClose={()=>setShowNewContact(false)} onCreated={c=>{setShowNewContact(false);cacheClear();openContact(c);}}/>}
 
     {viewAsRole&&<div style={{background:"#FAEEDA",borderRadius:8,padding:"8px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontSize:12,color:"#633806",fontWeight:600}}>Previewing as: {viewAsRole}</span>
@@ -6712,11 +6722,11 @@ function AuthenticatedApp({ authUser, onLogout }) {
       </div>}
     {projectView==="home"&&<div>
       <div style={{display:"flex",gap:8,marginBottom:20,padding:"0 4px"}}>
-        {!isProduction&&<button onClick={function(){setShowNewProject(true);}} style={{...btnP,fontSize:13,padding:"8px 18px"}}>+ New project</button>}
-        {!isProduction&&<button onClick={function(){setShowNewContact(true);}} style={{...btnSec,fontSize:13,padding:"8px 18px"}}>+ New contact</button>}
+        {showsNewButtons(effectiveRole)&&<button onClick={function(){setShowNewProject(true);}} style={{...btnP,fontSize:13,padding:"8px 18px"}}>+ New project</button>}
+        {showsNewButtons(effectiveRole)&&<button onClick={function(){setShowNewContact(true);}} style={{...btnSec,fontSize:13,padding:"8px 18px"}}>+ New contact</button>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10,maxWidth:480,padding:"0 4px"}}>
-        {[
+        {visibleHomeTiles(effectiveRole, [
           {id:"list",label:"Projects",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#243F81" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"pipeline",label:"Kanban",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;},roles:["Owner","Admin","Sales","Production"]},
           {id:"openitems",label:"Open Items",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>;},roles:["Owner","Admin","Sales"]},
@@ -6731,9 +6741,12 @@ function AuthenticatedApp({ authUser, onLogout }) {
           {id:"addresslookup",label:"Address Lookup",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>;},roles:["Production"]},
           {id:"tradepartners",label:"Trade Partners",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>;},roles:["Owner","Admin","Sales"]},
           {id:"tradelookup",label:"Trade Partner Lookup",icon:function(){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3974B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><circle cx="16" cy="16" r="3"/><path d="M18.5 18.5L21 21"/></svg>;},roles:["Production"]}
-        ].filter(function(item){return !item.roles||item.roles.indexOf(effectiveRole)>=0;}).sort(function(a,b){if(effectiveRole==="Production"){if(a.id==="_production")return -1;if(b.id==="_production")return 1;}return 0;}).map(function(item) {
+        ]).map(function(item) {
           var isExternal = item.external;
           return <div key={item.id} onClick={function(){
+            if (!homeTileVisible(effectiveRole, item)) return;
+            var nextView = item.id === "contacts" ? "contactsview" : item.id;
+            if (!isExternal && !canShowProjectView(effectiveRole, nextView)) return;
             if (isExternal) { window.open(item.external, "_blank"); }
             else if (item.id === "contacts") { setSection("contacts"); setProjectView("contactsview"); }
             else { setSection("projects"); setProjectView(item.id); }
@@ -6746,34 +6759,34 @@ function AuthenticatedApp({ authUser, onLogout }) {
           </div>;
         })}
       </div>
-      {mgmtAccess&&<div style={{padding:"16px 4px 0"}}><button onClick={function(){setProjectView("mgmtconsole");}} style={{padding:"8px 18px",borderRadius:10,border:"1px solid #1a1a1a",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600}}>Management Console</button></div>}
+      {showsManagementConsole(effectiveRole)&&<div style={{padding:"16px 4px 0"}}><button onClick={function(){ if(!canShowProjectView(effectiveRole,"mgmtconsole")) return; setProjectView("mgmtconsole"); }} style={{padding:"8px 18px",borderRadius:10,border:"1px solid #1a1a1a",background:"#1a1a1a",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600}}>Management Console</button></div>}
     </div>}
 
-    {projectView==="contactsview"&&<div>
+    {projectView==="contactsview"&&showView("contactsview")&&<div>
       <ContactsList onOpenContact={openContact}/>
     </div>}
 
     {(projectView!=="home"&&projectView!=="contactsview")&&<div>
-      {projectView==="dashboard"&&<Dashboard onOpenProject={openProject}/>}
-      {projectView==="pipeline"&&<PipelineView onOpenProject={isProduction?function(){}:openProject} readOnly={isProduction}/>}
-      {projectView==="addresslookup"&&<AddressLookup/>}
-      {projectView==="tradepartners"&&<TradePartnersDirectory canEdit={!isProduction}/>}
-      {projectView==="tradelookup"&&<TradePartnersDirectory canEdit={false}/>}
-      {projectView==="openitems"&&<OpenItemsView authUser={authUser} onOpenProject={openProject}/>}
-      {projectView==="stale"&&<StaleAlerts onOpenProject={openProject}/>}
-      {projectView==="changeorders"&&<OpenChangeOrders onOpenProject={openProject}/>}
-      {projectView==="ordertrack"&&<OrderDashboard onOpenProject={openProject}/>}
-      {projectView==="sops"&&<SOPViewer/>}
-            {projectView==="lifedeath"&&<LifeAndDeath onOpenProject={openProject}/>}
-      {projectView==="mgmtconsole"&&mgmtAccess&&<ManagementConsole onOpenProject={openProject}/>}
+      {projectView==="dashboard"&&showView("dashboard")&&<Dashboard onOpenProject={isLimited?undefined:openProject}/>}
+      {projectView==="pipeline"&&showView("pipeline")&&<PipelineView onOpenProject={isLimited?undefined:(isProduction?function(){}:openProject)} readOnly={isProduction||isLimited}/>}
+      {projectView==="addresslookup"&&showView("addresslookup")&&<AddressLookup/>}
+      {projectView==="tradepartners"&&showView("tradepartners")&&<TradePartnersDirectory canEdit={!isProduction}/>}
+      {projectView==="tradelookup"&&showView("tradelookup")&&<TradePartnersDirectory canEdit={false}/>}
+      {projectView==="openitems"&&showView("openitems")&&<OpenItemsView authUser={authUser} onOpenProject={openProject}/>}
+      {projectView==="stale"&&showView("stale")&&<StaleAlerts onOpenProject={openProject}/>}
+      {projectView==="changeorders"&&showView("changeorders")&&<OpenChangeOrders onOpenProject={openProject}/>}
+      {projectView==="ordertrack"&&showView("ordertrack")&&<OrderDashboard onOpenProject={openProject}/>}
+      {projectView==="sops"&&showView("sops")&&<SOPViewer/>}
+            {projectView==="lifedeath"&&showView("lifedeath")&&<LifeAndDeath onOpenProject={isLimited?undefined:openProject}/>}
+      {projectView==="mgmtconsole"&&showsManagementConsole(effectiveRole)&&showView("mgmtconsole")&&<ManagementConsole onOpenProject={isLimited?undefined:openProject} allowed={isLimited?VIEWER_CONSOLE_TILES:null} readOnly={isLimited}/>}
       {projectView==="hiddenconsole"&&mgmtAccess&&<HiddenConsole authUser={authUser}/>}
-      {projectView==="list"&&isProduction&&<div>
+      {projectView==="list"&&isProduction&&showView("list")&&<div>
         <div style={{fontSize:14,fontWeight:600,color:"#243F81",marginBottom:12}}>Active production projects</div>
         {schedulerProjectIds===null&&<div style={{padding:20,color:"#8a8780"}}>Loading...</div>}
         {schedulerProjectIds&&Object.keys(schedulerProjectIds).length===0&&<div style={{padding:20,color:"#8a8780",fontSize:13}}>No projects currently in the production schedule.</div>}
         {schedulerProjectIds&&Object.keys(schedulerProjectIds).length>0&&<ProductionProjectList schedulerIds={schedulerProjectIds} onOpenProject={openProject}/>}
       </div>}
-      {projectView==="list"&&!isProduction&&<div>
+      {projectView==="list"&&!isProduction&&showView("list")&&<div>
         <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
           {(isSales?[["mine","My leads"]]:[]).concat([["active","Active"],["all","All"],["sold","Sold"],["lost","Lost"],["new","New this month"],["estimated","Estimated +"]]).map(function(v) {
             var active = quickView === v[0];
