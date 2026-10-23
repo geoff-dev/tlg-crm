@@ -207,7 +207,8 @@ describe("App.jsx wires the Viewer policy", () => {
     assert.match(appSource, /showNewContact&&showsNewButtons\(effectiveRole\)&&<NewContactModal/);
     assert.match(appSource, /const openProject = p => \{ openRecord\(effectiveRole, p, setDetailView, "project"\); \};/);
     assert.match(appSource, /const openContact = c => \{ openRecord\(effectiveRole, c, setDetailView, "contact"\); \};/);
-    assert.match(appSource, /if \(detailView && canOpenRecords\(effectiveRole\)\)/);
+    assert.match(appSource, /const showDetail = !!\(detailView && canOpenRecords\(effectiveRole\)\)/);
+    assert.match(appSource, /display:showDetail\?"none":"block"/);
     assert.match(appSource, /onOpenContact=\{openContact\}/);
     assert.match(appSource, /onOpenProject=\{openProject\}/);
     assert.match(appSource, /visibleHomeTiles\(effectiveRole,/);

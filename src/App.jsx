@@ -6686,9 +6686,10 @@ function AuthenticatedApp({ authUser, onLogout }) {
   const totalPages = Math.ceil(effectiveCount/PAGE_SIZE);
   const openProject = p => { openRecord(effectiveRole, p, setDetailView, "project"); };
   const openContact = c => { openRecord(effectiveRole, c, setDetailView, "contact"); };
+  const showDetail = !!(detailView && canOpenRecords(effectiveRole));
 
   var detailElement = null;
-  if (detailView && canOpenRecords(effectiveRole)) {
+  if (showDetail) {
     if (detailView.type==="project") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ProjectDetail project={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){cacheClear("projects");loadProjects();}} onOpenContact={openContact} authUser={authUser} isProduction={isProduction}/></div>;
     if (detailView.type==="contact") detailElement = <div style={{maxWidth:800,margin:"0 auto",padding:"16px 0"}}><ContactDetail contact={detailView.data} onBack={function(){setDetailView(null);}} onSaved={function(){}} onOpenProject={openProject} authUser={authUser}/></div>;
   }
@@ -6699,7 +6700,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginBottom:16,padding:"0 4px"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <h1 onClick={function(){if(!mgmtAccess)return;var ref=headerClickRef.current;ref.count++;clearTimeout(ref.timer);if(ref.count>=3){ref.count=0;setProjectView("hiddenconsole");setSection("projects");}else{ref.timer=setTimeout(function(){ref.count=0;},600);}}} style={{margin:0,fontSize:22,fontWeight:700,letterSpacing:"-0.03em",color:"#1a1a1a",cursor:"default",userSelect:"none"}}>TLG<span style={{color:"#185FA5",marginLeft:4}}>LMS</span></h1>
-        {projectView!=="home"&&!detailView&&<button onClick={function(){setProjectView("home");setSection("projects");setDetailView(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#185FA5",fontWeight:600,padding:"4px 8px"}}>Home</button>}
+        {projectView!=="home"&&!showDetail&&<button onClick={function(){setProjectView("home");setSection("projects");setDetailView(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#185FA5",fontWeight:600,padding:"4px 8px"}}>Home</button>}
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <span style={{fontSize:12,color:"#8a8780",fontWeight:500}}>{authUser.name}</span>
@@ -6710,7 +6711,7 @@ function AuthenticatedApp({ authUser, onLogout }) {
 
     {detailElement}
 
-    <div style={{display:detailView?"none":"block"}}>
+    <div style={{display:showDetail?"none":"block"}}>
 
     {showNewProject&&showsNewButtons(effectiveRole)&&<NewProjectModal onClose={()=>setShowNewProject(false)} onCreated={p=>{setShowNewProject(false);cacheClear();openProject(p);}}/>}
     {showNewContact&&showsNewButtons(effectiveRole)&&<NewContactModal onClose={()=>setShowNewContact(false)} onCreated={c=>{setShowNewContact(false);cacheClear();openContact(c);}}/>}
