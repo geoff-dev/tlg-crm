@@ -7,13 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test supabase/functions/sold-create/mapper.test.js supabase/functions/pin-login/*.test.js src/staffSession.test.js"
+    "test": "node --test supabase/functions/sold-create/mapper.test.js supabase/functions/pin-login/*.test.js src/staffSession.test.js src/staffToken.test.js supabase/tests/staff_write_guard.test.mjs",
+    "test:rls": "node --test supabase/tests/staff_write_guard.test.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@vitejs/plugin-react": "^4.2.0",
     "vite": "^5.0.0"
   }
